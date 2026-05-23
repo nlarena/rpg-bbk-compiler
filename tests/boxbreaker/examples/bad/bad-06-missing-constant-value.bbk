@@ -1,0 +1,7 @@
+// Errors: DCL-C with missing or malformed value.
+
+DCL-C MAX;                        // missing value entirely
+DCL-C PI CONST();                 // empty CONST()
+DCL-C NAME CONST(1 + 2);          // expressions not yet supported in CONST
+DCL-C COMPANY CONST;              // CONST missing parens
+DCL-C BAD_REF CONST("text" : 5);  // CONST takes single literal or IDENT

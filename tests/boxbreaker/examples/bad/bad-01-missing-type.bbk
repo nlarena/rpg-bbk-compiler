@@ -1,0 +1,8 @@
+// Errors: DCL-S declarations without type specification.
+
+CTL-OPT MAIN(main);
+
+DCL-S x;                  //   missing type entirely
+DCL-S y INZ(0);           // INZ is a modifier, not a type
+DCL-S z STATIC;           // STATIC is a modifier, not a type
+DCL-S w EXPORT;           // same

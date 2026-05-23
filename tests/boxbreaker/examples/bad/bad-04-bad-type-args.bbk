@@ -1,0 +1,9 @@
+// Errors: malformed type argument lists.
+
+DCL-S a CHAR();             // empty type args — expects INT_LIT
+DCL-S b INT(;               // unterminated args
+DCL-S c PACKED(9:);         // colon without second number
+DCL-S d VARCHAR(abc);       // non-numeric arg (IDENT instead of INT_LIT)
+DCL-S e INT(10:);           // trailing colon
+DCL-S f PACKED 9:2;         // missing parens entirely
+DCL-S g INT(10:20:30);      // too many parts

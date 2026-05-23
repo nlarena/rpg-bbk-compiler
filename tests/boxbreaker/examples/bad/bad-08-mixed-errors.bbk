@@ -1,0 +1,24 @@
+// Multiple unrelated errors mixed with good declarations (tests parser recovery).
+// The parser should report each error independently and continue.
+
+CTL-OPT MAIN(broken);
+
+DCL-S goodOne     INT(10);            // OK
+DCL-S brokenOne;                      // ERROR: missing type
+DCL-S anotherGood VARCHAR(50);        // OK after error
+
+DCL-C MISSING_VAL;                    // ERROR: missing value
+DCL-C GOOD_C 42;                      // OK
+DCL-C TRAILING_BAD CONST(;            // ERROR: unterminated
+DCL-C ANOTHER_GOOD true;              // OK
+
+DCL-S validPacked  PACKED(9:2)        // ERROR: missing ;
+DCL-S validInt     INT(10);           // OK
+
+// Below should NOT report errors yet — Layer 1 doesn't parse procedures
+// or statements, so everything inside DCL-PROC falls through silently.
+DCL-PROC main {
+  print("Layer 1 doesn't parse procedures yet");
+  totally invalid syntax here doesn't matter;
+  } } } extra braces too {
+}

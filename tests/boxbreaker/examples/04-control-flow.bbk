@@ -1,0 +1,60 @@
+// Control flow: if, select, while, do-while, for, break, continue.
+
+CTL-OPT MAIN(controlFlowDemo);
+
+DCL-PROC controlFlowDemo {
+  DCL-S counter INT(10) INZ(0);
+  DCL-S status  CHAR(1);
+  DCL-S sum     INT(10) INZ(0);
+
+  /*
+   * if / else if / else  — braces mandatory for every block.
+   */
+  if (counter == 0) {
+    print("Zero");
+  } else if (counter < 10) {
+    print("Small");
+  } else {
+    print("Large");
+  }
+
+  // select / when / other  — when takes arbitrary boolean expressions
+  status = "A";
+  select {
+    when (status == "A") {
+      print("Active");
+    }
+    when (status == "I" || status == "P") {
+      print("Inactive or Pending");
+    }
+    other {
+      print("Unknown status");
+    }
+  }
+
+  // while (pre-test)
+  while (counter < 5) {
+    counter += 1;
+  }
+
+  // do / while (post-test)
+  do {
+    counter -= 1;
+  } while (counter > 0);
+
+  // for with inline declaration of the loop variable
+  for (DCL-S i INT(10) = 0; i < 10; i += 1) {
+    sum += i;
+  }
+
+  // for with break and continue
+  for (DCL-S j INT(10) = 0; j < 100; j += 1) {
+    if (j == 50) {
+      break;
+    }
+    if (j % 2 == 0) {
+      continue;
+    }
+    sum += j;
+  }
+}

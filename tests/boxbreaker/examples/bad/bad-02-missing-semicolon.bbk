@@ -1,0 +1,12 @@
+// Errors: declarations without terminating semicolon.
+
+CTL-OPT MAIN(main);
+
+DCL-S firstName VARCHAR(50)        // missing ;
+DCL-S lastName  VARCHAR(50);
+
+DCL-C MAX_RETRIES 5                // missing ;
+DCL-C MIN_RETRIES 1;
+
+DCL-S counter INT(10) INZ(0)       // missing ; (after modifier)
+DCL-S total   PACKED(11:2);

@@ -1,0 +1,43 @@
+// Procedure prototypes, definitions, parameters, and calls.
+
+CTL-OPT MAIN(proceduresDemo);
+
+// Forward prototypes (inline form only — no separate DCL-PI in BBK)
+DCL-PR sum(a INT(10) VALUE, b INT(10) VALUE) -> INT(10);
+DCL-PR greet(name VARCHAR(50) CONST);
+DCL-PR factorial(n INT(10) VALUE) -> INT(10);
+
+// External program prototype — calls an IBM i *PGM by name
+DCL-PR CUSTPROG(customerId INT(10) VALUE, status INT(10)) EXTPGM("CUSTPROG");
+
+DCL-PROC proceduresDemo {
+  DCL-S total      INT(10);
+  DCL-S factResult INT(10);
+  DCL-S custStatus INT(10);
+
+  total = sum(5, 7);
+  print("5 + 7 = " + char(total));
+
+  greet("World");
+
+  factResult = factorial(5);
+  print("5! = " + char(factResult));
+
+  // Call to external IBM i program
+  CUSTPROG(12345, custStatus);
+}
+
+DCL-PROC sum(a INT(10) VALUE, b INT(10) VALUE) -> INT(10) EXPORT {
+  return a + b;
+}
+
+DCL-PROC greet(name VARCHAR(50) CONST) {
+  print("Hello, " + trim(name) + "!");
+}
+
+DCL-PROC factorial(n INT(10) VALUE) -> INT(10) {
+  if (n <= 1) {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}

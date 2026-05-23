@@ -1,0 +1,9 @@
+// Errors: DCL-S or DCL-C without identifier (a type keyword cannot be a name).
+
+DCL-S INT(10);              // missing name; INT is a keyword, not identifier
+DCL-S CHAR(50);             // missing name
+DCL-S PACKED(9:2);          // missing name
+
+DCL-C 42;                   // missing name
+DCL-C "value";              // missing name
+DCL-C true;                 // missing name

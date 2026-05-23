@@ -1,0 +1,64 @@
+// File operations: declarations, read/chain/write/update, error handling.
+
+CTL-OPT MAIN(filesDemo);
+
+DCL-F customers DISK USAGE(*INPUT) KEYED EXTNAME("CUSTOMER");
+DCL-F orders    DISK USAGE(*INPUT:*OUTPUT:*UPDATE) KEYED EXTNAME("ORDER");
+DCL-F report    PRINTER USAGE(*OUTPUT) USROPN;
+
+// Externally described DS — fields imported from the CUSTOMER record format
+DCL-DS customerRec EXTNAME("CUSTOMER") QUALIFIED;
+
+DCL-DS orderRec QUALIFIED {
+  orderId    INT(10);
+  customerId INT(10);
+  amount     PACKED(11:2);
+  orderDate  DATE;
+}
+
+DCL-PR processOrder(rec LIKEDS(orderRec) CONST);
+
+DCL-PROC filesDemo {
+  DCL-S targetCustomerId INT(10) INZ(12345);
+  DCL-S customerFound    BOOL;
+
+  monitor {
+    open report;
+
+    // Random access by key
+    chain targetCustomerId customers customerRec;
+    customerFound = (status() == 0);
+
+    if (customerFound) {
+      print("Customer: " + trim(customerRec.name));
+
+      // Sequential read of orders for this customer
+      setll targetCustomerId orders;
+      reade targetCustomerId orders orderRec;
+      while (status() == 0) {
+        processOrder(orderRec);
+        reade targetCustomerId orders orderRec;
+      }
+    } else {
+      print("Customer not found");
+    }
+
+    // Insert a new order
+    orderRec.orderId    = 99999;
+    orderRec.customerId = targetCustomerId;
+    orderRec.amount     = 150.00d;
+    orderRec.orderDate  = currentDate();
+    write orders orderRec;
+
+  } on-error (404, 405) {
+    print("File access error: code " + char(status()));
+  } on-error {
+    print("Unexpected error: code " + char(status()));
+  } on-exit {
+    close report;
+  }
+}
+
+DCL-PROC processOrder(rec LIKEDS(orderRec) CONST) {
+  print("  Order " + char(rec.orderId) + " amount=" + char(rec.amount));
+}

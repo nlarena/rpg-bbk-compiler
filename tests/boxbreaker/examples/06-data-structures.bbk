@@ -1,0 +1,66 @@
+// Data structures: QUALIFIED, TEMPLATE, LIKEDS, OVERLAY, arrays of DS.
+
+CTL-OPT MAIN(dataStructuresDemo);
+
+// Qualified DS — subfields accessed via dot notation
+DCL-DS person QUALIFIED {
+  firstName VARCHAR(50);
+  lastName  VARCHAR(50);
+  age       INT(10);
+  salary    PACKED(9:2);
+}
+
+// Template — reusable layout, no storage allocated
+DCL-DS addressTemplate TEMPLATE {
+  street VARCHAR(100);
+  city   VARCHAR(50);
+  state  CHAR(2);
+  zip    CHAR(10);
+}
+
+// Multiple DS instances based on the same template
+DCL-DS homeAddress LIKEDS(addressTemplate);
+DCL-DS workAddress LIKEDS(addressTemplate);
+
+// DS with OVERLAY — union semantics, multiple views on the same memory
+DCL-DS dateRecord QUALIFIED {
+  fullDate CHAR(8);
+  year     CHAR(4) OVERLAY(fullDate:1);
+  month    CHAR(2) OVERLAY(fullDate:5);
+  day      CHAR(2) OVERLAY(fullDate:7);
+}
+
+// Array of data structures
+DCL-DS employees QUALIFIED DIM(1000) {
+  id     INT(10);
+  name   VARCHAR(50);
+  active BOOL;
+}
+
+DCL-PROC dataStructuresDemo {
+  // Subfield assignment via dot notation
+  person.firstName = "Nicolas";
+  person.lastName  = "Larena";
+  person.age       = 28;
+  person.salary    = 75000.00d;
+
+  homeAddress.street = "Av Corrientes 1234";
+  homeAddress.city   = "Buenos Aires";
+  homeAddress.state  = "BA";
+  homeAddress.zip    = "C1043";
+
+  // OVERLAY in action — write whole, read parts
+  dateRecord.fullDate = "20260522";
+  print("Year:  " + dateRecord.year);    // "2026"
+  print("Month: " + dateRecord.month);   // "05"
+  print("Day:   " + dateRecord.day);     // "22"
+
+  // Array of DS
+  employees[0].id     = 1001;
+  employees[0].name   = "Alice";
+  employees[0].active = true;
+
+  employees[1].id     = 1002;
+  employees[1].name   = "Bob";
+  employees[1].active = false;
+}

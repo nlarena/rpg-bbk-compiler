@@ -12,7 +12,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdeaCommunity("2024.3")
+        intellijIdea("2025.3")
         localPlugin(project(":plugin-bbk"))
     }
 }

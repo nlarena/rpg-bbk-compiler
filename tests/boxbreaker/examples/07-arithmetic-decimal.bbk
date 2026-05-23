@@ -1,0 +1,48 @@
+// Decimal arithmetic with PACKED/ZONED and rounding attribute modifiers.
+
+CTL-OPT MAIN(arithmeticDemo);
+
+DCL-C TAX_RATE PACKED(5:4) CONST(0.2100d);
+
+DCL-PROC arithmeticDemo {
+  DCL-S price     PACKED(9:2)  INZ(199.95d);
+  DCL-S quantity  INT(10)      INZ(3);
+  DCL-S subtotal  PACKED(11:2);
+  DCL-S taxAmount PACKED(11:2);
+  DCL-S total     PACKED(11:2);
+
+  DCL-S average   PACKED(9:4);
+  DCL-S items     INT(10) INZ(7);
+
+  // Basic operations
+  subtotal  = price * quantity;
+  taxAmount = subtotal * TAX_RATE @halfup;   // half-up rounding on the result
+  total     = subtotal + taxAmount;
+
+  // Division with explicit truncation
+  average = total / items @trunc;
+
+  // Power
+  DCL-S squared PACKED(15:2);
+  squared = price ** 2;
+
+  // Modulo
+  DCL-S remainder INT(10);
+  remainder = 100 % 7;
+
+  // Type conversions
+  DCL-S asInt   INT(10);
+  DCL-S asFloat FLOAT(8);
+  DCL-S asStr   VARCHAR(20);
+
+  asInt   = total @halfup;         // implicit decimal-to-int with rounding
+  asFloat = float(total);
+  asStr   = char(total);
+
+  // Numeric BIFs
+  DCL-S diff PACKED(9:2);
+  DCL-S root FLOAT(8);
+
+  diff = abs(price - 100.00d);
+  root = sqrt(2.0);
+}

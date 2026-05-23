@@ -1,0 +1,14 @@
+// Errors: LIKE / LIKEDS / LIKEREC with missing or wrong argument.
+
+DCL-S a LIKE();                   // missing identifier
+DCL-S b LIKEDS();                 // missing identifier
+DCL-S c LIKEREC();                // missing identifier
+
+DCL-S d LIKE("text");             // string not allowed; needs IDENT
+DCL-S e LIKE(5);                  // number not allowed
+DCL-S f LIKEDS(true);             // boolean keyword not allowed
+
+DCL-S g LIKE;                     // missing parens entirely
+DCL-S h LIKEDS otherVar;          // missing parens
+
+DCL-S i LIKE(foo:bar);            // LIKE takes one IDENT, not a list

@@ -1,0 +1,56 @@
+// Variable declarations covering all primitive types and modifiers.
+
+CTL-OPT MAIN(variablesDemo);
+
+DCL-PROC variablesDemo {
+  // Signed integers (n is digit hint; actual storage is 1/2/4/8 bytes)
+  DCL-S byteVal     INT(3);
+  DCL-S shortVal    INT(5);
+  DCL-S intVal      INT(10) INZ(42);
+  DCL-S longVal     INT(20);
+
+  // Unsigned integers
+  DCL-S unsignedVal UNS(10);
+
+  // Floating-point
+  DCL-S floatVal    FLOAT(4);
+  DCL-S doubleVal   FLOAT(8) INZ(3.14);
+
+  // Decimal exact
+  DCL-S price       PACKED(9:2) INZ(19.95d);
+  DCL-S quantity    ZONED(5:0);
+  DCL-S accumulator BINDEC(11:4);
+
+  // Character (fixed-length, padded with blanks)
+  DCL-S code        CHAR(5);
+  DCL-S largeText   CHAR(2048);
+
+  // Character (variable-length)
+  DCL-S name        VARCHAR(100) INZ("");
+  DCL-S message     VARCHAR(500);
+
+  // Boolean
+  DCL-S isActive    BOOL INZ(true);
+
+  // Date / Time / Timestamp
+  DCL-S birthDate   DATE;
+  DCL-S clockTime   TIME;
+  DCL-S logTime     TIMESTAMP;
+
+  // Pointers and based variables
+  DCL-S ptr         POINTER;
+  DCL-S basedInt    INT(10) BASED(ptr);
+
+  // Arrays
+  DCL-S nums        INT(10)     DIM(100);
+  DCL-S matrix      INT(10)     DIM(10:10);   // 2D, 10x10
+  DCL-S names       VARCHAR(50) DIM(50);
+
+  // Type inheritance
+  DCL-S priceCopy   LIKE(price);
+  DCL-S nameCopy    LIKE(name);
+
+  // Storage class modifiers
+  DCL-S sharedCounter INT(10) STATIC;
+  DCL-S exportedFlag  BOOL    EXPORT;
+}

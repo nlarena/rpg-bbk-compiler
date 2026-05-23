@@ -1,0 +1,258 @@
+{
+  parserClass="com.larena.boxbreaker.plugin.bbk.parser.BbkParser"
+  parserUtilClass="com.larena.boxbreaker.plugin.bbk.parser.BbkParserUtil"
+
+  implements="com.larena.boxbreaker.plugin.bbk.psi.BbkPsiElement"
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Bbk"
+  psiImplClassSuffix="Impl"
+  psiPackage="com.larena.boxbreaker.plugin.bbk.psi"
+  psiImplPackage="com.larena.boxbreaker.plugin.bbk.psi.impl"
+
+  elementTypeHolderClass="com.larena.boxbreaker.plugin.bbk.psi.BbkTypes"
+  elementTypeClass="com.larena.boxbreaker.plugin.bbk.BbkElementType"
+  tokenTypeClass="com.larena.boxbreaker.plugin.bbk.BbkTokenType"
+
+  tokens = [
+    // ----- Identifiers -----
+    IDENT="regexp:[a-zA-Z_][a-zA-Z0-9_]*"
+    STAR_IDENT="regexp:\*[a-zA-Z_][a-zA-Z0-9_]*"
+
+    // ----- Literals -----
+    INT_LIT="regexp:[0-9]+"
+    INT_LIT_HEX="regexp:0x[0-9a-fA-F]+"
+    INT_LIT_OCT="regexp:0o[0-7]+"
+    FLOAT_LIT="regexp:[0-9]+\.[0-9]+[eE][+-]?[0-9]+"
+    DEC_LIT="regexp:[0-9]+\.[0-9]+[dD]?"
+    STR_LIT="regexp:\".*\""
+
+    // ----- Punctuators -----
+    SEMI=";"
+    COMMA=","
+    DOT="."
+    ARROW="->"
+    LPAREN="("
+    RPAREN=")"
+    LBRACE="{"
+    RBRACE="}"
+    LBRACKET="["
+    RBRACKET="]"
+    COLON=":"
+    AT="@"
+
+    // ----- Arithmetic -----
+    PLUS="+"
+    MINUS="-"
+    STAR="*"
+    SLASH="/"
+    PERCENT="%"
+    STAR_STAR="**"
+
+    // ----- Comparison -----
+    EQ_EQ="=="
+    BANG_EQ="!="
+    LT="<"
+    GT=">"
+    LT_EQ="<="
+    GT_EQ=">="
+
+    // ----- Logical -----
+    AMP_AMP="&&"
+    PIPE_PIPE="||"
+    BANG="!"
+
+    // ----- Bitwise -----
+    AMP="&"
+    PIPE="|"
+    CARET="^"
+    TILDE="~"
+    LT_LT="<<"
+    GT_GT=">>"
+
+    // ----- Assignment -----
+    EQ="="
+    PLUS_EQ="+="
+    MINUS_EQ="-="
+    STAR_EQ="*="
+    SLASH_EQ="/="
+    PERCENT_EQ="%="
+    AMP_EQ="&="
+    PIPE_EQ="|="
+    CARET_EQ="^="
+    LT_LT_EQ="<<="
+    GT_GT_EQ=">>="
+
+    // ----- Ternary -----
+    QUESTION="?"
+
+    // ----- Control flow (C-style) -----
+    KW_IF="if"
+    KW_ELSE="else"
+    KW_WHILE="while"
+    KW_DO="do"
+    KW_FOR="for"
+    KW_BREAK="break"
+    KW_CONTINUE="continue"
+    KW_RETURN="return"
+
+    // ----- Control flow (RPG-style retained) -----
+    KW_SELECT="select"
+    KW_WHEN="when"
+    KW_OTHER="other"
+    KW_MONITOR="monitor"
+    KW_ON_ERROR="on-error"
+    KW_ON_EXIT="on-exit"
+
+    // ----- Boolean and null literals -----
+    KW_TRUE="true"
+    KW_FALSE="false"
+    KW_NULL="null"
+
+    // ----- Declaration keywords -----
+    KW_DCL_S="DCL-S"
+    KW_DCL_C="DCL-C"
+    KW_DCL_DS="DCL-DS"
+    KW_DCL_PR="DCL-PR"
+    KW_DCL_PROC="DCL-PROC"
+    KW_DCL_F="DCL-F"
+    KW_DCL_PARM="DCL-PARM"
+    KW_DCL_SUBF="DCL-SUBF"
+
+    // ----- Primitive types -----
+    KW_CHAR="CHAR"
+    KW_VARCHAR="VARCHAR"
+    KW_PACKED="PACKED"
+    KW_ZONED="ZONED"
+    KW_BINDEC="BINDEC"
+    KW_INT="INT"
+    KW_UNS="UNS"
+    KW_FLOAT="FLOAT"
+    KW_DATE="DATE"
+    KW_TIME="TIME"
+    KW_TIMESTAMP="TIMESTAMP"
+    KW_BOOL="BOOL"
+    KW_POINTER="POINTER"
+    KW_VOID="VOID"
+
+    // ----- Declaration modifiers -----
+    KW_INZ="INZ"
+    KW_BASED="BASED"
+    KW_DIM="DIM"
+    KW_OVERLAY="OVERLAY"
+    KW_POS="POS"
+    KW_LIKE="LIKE"
+    KW_LIKEDS="LIKEDS"
+    KW_LIKEREC="LIKEREC"
+    KW_TEMPLATE="TEMPLATE"
+    KW_QUALIFIED="QUALIFIED"
+    KW_ALIGN="ALIGN"
+    KW_VALUE="VALUE"
+    KW_CONST="CONST"
+    KW_OPTIONS="OPTIONS"
+    KW_RTNPARM="RTNPARM"
+    KW_OPDESC="OPDESC"
+    KW_STATIC="STATIC"
+    KW_EXPORT="EXPORT"
+    KW_IMPORT="IMPORT"
+    KW_EXTPGM="EXTPGM"
+    KW_EXTPROC="EXTPROC"
+
+    // ----- File-spec keywords -----
+    KW_USAGE="USAGE"
+    KW_KEYED="KEYED"
+    KW_EXTNAME="EXTNAME"
+    KW_EXTFILE="EXTFILE"
+    KW_PREFIX="PREFIX"
+    KW_RENAME="RENAME"
+    KW_DISK="DISK"
+    KW_PRINTER="PRINTER"
+    KW_WORKSTN="WORKSTN"
+    KW_SEQ="SEQ"
+    KW_USROPN="USROPN"
+    KW_INFDS="INFDS"
+    KW_INDDS="INDDS"
+
+    // ----- Directives -----
+    KW_CTL_OPT="CTL-OPT"
+    KW_PRE_IF="PRE-IF"
+    KW_PRE_ELSEIF="PRE-ELSEIF"
+    KW_PRE_ELSE="PRE-ELSE"
+    KW_PRE_ENDIF="PRE-ENDIF"
+    KW_PRE_DEFINE="PRE-DEFINE"
+    KW_PRE_UNDEFINE="PRE-UNDEFINE"
+    KW_PRE_INCLUDE="PRE-INCLUDE"
+    KW_PRE_EOF="PRE-EOF"
+
+    // ----- Attribute modifiers -----
+    ATTR_HALFUP="@halfup"
+    ATTR_HALFDOWN="@halfdown"
+    ATTR_TRUNC="@trunc"
+
+    // ----- Comments (whitespace-like, skipped by lexer) -----
+    LINE_COMMENT="regexp://[^\r\n]*"
+    BLOCK_COMMENT="regexp:/\*.*\*/"
+  ]
+}
+
+// =====================================================================
+// LAYER 1 — Variable and Constant Declarations (DCL-S, DCL-C)
+// Other top-level constructs fall through to unknown_item (no errors yet).
+// =====================================================================
+
+translation_unit ::= top_level_item*
+
+top_level_item ::= variable_declaration
+                 | constant_declaration
+                 | unknown_item
+
+// ----- Variable declaration: DCL-S name TYPE [modifiers]; -----
+variable_declaration ::= KW_DCL_S IDENT type_specification var_modifier* SEMI {pin=1}
+
+// ----- Constant declaration: DCL-C name VALUE; -----
+constant_declaration ::= KW_DCL_C IDENT constant_value SEMI {pin=1}
+
+// ----- Type specification -----
+type_specification ::= like_reference | primitive_type_spec
+
+primitive_type_spec ::= primitive_type type_args?
+
+primitive_type ::= KW_CHAR | KW_VARCHAR
+                 | KW_PACKED | KW_ZONED | KW_BINDEC
+                 | KW_INT | KW_UNS | KW_FLOAT
+                 | KW_DATE | KW_TIME | KW_TIMESTAMP
+                 | KW_BOOL | KW_POINTER | KW_VOID
+
+type_args ::= LPAREN INT_LIT type_args_tail? RPAREN {pin=1}
+private type_args_tail ::= COLON INT_LIT {pin=1}
+
+like_reference ::= (KW_LIKE | KW_LIKEDS | KW_LIKEREC) LPAREN IDENT RPAREN {pin=1}
+
+// ----- Variable modifiers -----
+var_modifier ::= inz_modifier
+               | static_modifier
+               | export_modifier
+               | dim_modifier
+               | based_modifier
+               | qualified_modifier
+
+inz_modifier        ::= KW_INZ LPAREN modifier_value RPAREN {pin=1}
+static_modifier     ::= KW_STATIC
+export_modifier     ::= KW_EXPORT
+dim_modifier        ::= KW_DIM LPAREN INT_LIT (COLON INT_LIT)? RPAREN {pin=1}
+based_modifier      ::= KW_BASED LPAREN IDENT RPAREN {pin=1}
+qualified_modifier  ::= KW_QUALIFIED
+
+private modifier_value ::= literal | KW_TRUE | KW_FALSE | KW_NULL | STAR_IDENT | IDENT
+
+// ----- Constant value -----
+constant_value ::= const_wrapper | literal | KW_TRUE | KW_FALSE | KW_NULL
+
+const_wrapper ::= KW_CONST LPAREN (literal | IDENT) RPAREN {pin=1}
+
+// ----- Literal -----
+literal ::= INT_LIT | INT_LIT_HEX | INT_LIT_OCT | FLOAT_LIT | DEC_LIT | STR_LIT
+
+// ----- Fallback: anything we don't yet recognize, consumed silently -----
+private unknown_item ::= !<<eof>> any_token
+external any_token ::= consumeAnyToken

@@ -1,0 +1,7 @@
+// Minimal BoxBreaker program — entry point declared via CTL-OPT MAIN.
+
+CTL-OPT MAIN(helloMain);
+
+DCL-PROC helloMain {
+  print("Hello, BoxBreaker!");
+}

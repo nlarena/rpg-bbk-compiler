@@ -1,0 +1,12 @@
+// Errors: variable modifiers with missing or malformed arguments.
+
+DCL-S a INT(10) INZ();            // INZ requires a value
+DCL-S b INT(10) INZ(0;            // INZ without closing paren
+DCL-S c INT(10) INZ 0;            // INZ missing parens
+
+DCL-S d INT(10) DIM();            // DIM requires a number
+DCL-S e INT(10) DIM(abc);         // DIM requires INT_LIT, not IDENT
+
+DCL-S f INT(10) BASED();          // BASED requires identifier
+DCL-S g INT(10) BASED(123);       // BASED requires IDENT, not literal
+DCL-S h INT(10) BASED ptr;        // BASED missing parens

@@ -1,0 +1,31 @@
+// Preprocessor directives: defines, conditional compilation, includes.
+
+PRE-DEFINE VERSION "1.0.0"
+PRE-DEFINE DEBUG
+
+PRE-INCLUDE "common-types.bbki"
+
+CTL-OPT MAIN(directivesDemo);
+
+DCL-C MAX_BUFFER 1024;
+
+DCL-PROC directivesDemo {
+  DCL-S buffer CHAR(MAX_BUFFER);
+
+  PRE-IF DEFINED(DEBUG)
+    print("Debug build, version " + VERSION);
+  PRE-ELSE
+    print("Production build");
+  PRE-ENDIF
+
+  PRE-IF DEFINED(FEATURE_LOGGING)
+    log("Demo started");
+  PRE-ENDIF
+}
+
+// Conditional inclusion of additional source files
+PRE-IF DEFINED(EXTENDED_FEATURES)
+  PRE-INCLUDE "extended-procs.bbki"
+PRE-ELSEIF DEFINED(LITE_MODE)
+  PRE-INCLUDE "lite-procs.bbki"
+PRE-ENDIF

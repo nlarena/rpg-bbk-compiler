@@ -1,0 +1,25 @@
+// Named constants with literals and computed expressions.
+
+CTL-OPT MAIN(constantsDemo);
+
+// Simple literal constants
+DCL-C MAX_RETRIES  5;
+DCL-C PI           3.14159d;
+DCL-C COMPANY_NAME "Acme Corporation";
+DCL-C VERSION      'v1.0.0';
+DCL-C IS_DEBUG     true;
+DCL-C EMPTY_PTR    null;
+DCL-C TAX_RATE     0.21d;
+
+// Constants computed from constant expressions
+DCL-C MAX_RETRIES_DOUBLED CONST(MAX_RETRIES * 2);
+DCL-C TAX_PERCENT         CONST(TAX_RATE * 100);
+
+DCL-PROC constantsDemo {
+  print(COMPANY_NAME);
+  print("Version: " + VERSION);
+
+  if (IS_DEBUG) {
+    print("Debug build, max retries: " + char(MAX_RETRIES_DOUBLED));
+  }
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Box body: gray rectangle with a horizontal line to suggest a lid -->
+  <rect x="1.5" y="4.5" width="13" height="10" rx="0.5"
+        fill="#4A5568" stroke="#1A202C" stroke-width="0.5"/>
+  <line x1="1.5" y1="7" x2="14.5" y2="7" stroke="#1A202C" stroke-width="0.5"/>
+
+  <!-- Lightning bolt overlaid diagonally (top-right to bottom-left) -->
+  <polygon points="11,1 4,7 8,7 5,15 12,9 8,9"
+           fill="#F6D55C" stroke="#92400E" stroke-width="0.4"
+           stroke-linejoin="miter"/>
+</svg>

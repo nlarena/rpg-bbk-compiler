@@ -1,0 +1,51 @@
+// String operations: CHAR (fixed) vs VARCHAR (variable), both quote styles, BIFs.
+
+CTL-OPT MAIN(stringsDemo);
+
+DCL-PROC stringsDemo {
+  // Fixed-length CHAR — padded with blanks on assignment
+  DCL-S code CHAR(5);
+  code = "AB";                       // stored as "AB   "
+
+  // Variable-length VARCHAR
+  DCL-S name VARCHAR(100);
+  name = "Nicolas";                  // length = 7
+
+  // Both quote styles are equivalent
+  DCL-S doubleQuoted VARCHAR(50);
+  DCL-S singleQuoted VARCHAR(50);
+  doubleQuoted = "Hello with double quotes";
+  singleQuoted = 'Hello with single quotes';
+
+  // Concatenation with +
+  DCL-S firstName VARCHAR(50) INZ("Nicolas");
+  DCL-S lastName  VARCHAR(50) INZ("Larena");
+  DCL-S fullName  VARCHAR(100);
+  fullName = firstName + " " + lastName;
+
+  // Length and search
+  DCL-S length   INT(10);
+  DCL-S position INT(10);
+  length   = len(fullName);
+  position = scan("Larena", fullName);
+
+  // Substring and trimming
+  DCL-S sub     VARCHAR(50);
+  DCL-S trimmed VARCHAR(50);
+  sub     = substr(fullName, 1, 7);    // "Nicolas"
+  trimmed = trim("  spaced  ");        // "spaced"
+
+  // Case conversion
+  DCL-S lowerCase VARCHAR(100);
+  DCL-S upperCase VARCHAR(100);
+  lowerCase = lower(fullName);
+  upperCase = upper(fullName);
+
+  // Replace
+  DCL-S replaced VARCHAR(100);
+  replaced = replace(fullName, "Nicolas", "Nico");
+
+  // Escape sequences (in either quote style)
+  DCL-S withEscapes VARCHAR(100);
+  withEscapes = "Line 1\nLine 2\tTabbed\n\"Quoted\"";
+}

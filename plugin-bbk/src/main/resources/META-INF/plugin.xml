@@ -11,5 +11,17 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <fileType
+            name="BBK File"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.BbkFileType"
+            fieldName="INSTANCE"
+            language="BBK"
+            extensions="bbk"/>
+        <lang.parserDefinition
+            language="BBK"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.BbkParserDefinition"/>
+        <lang.syntaxHighlighterFactory
+            language="BBK"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.BbkSyntaxHighlighterFactory"/>
     </extensions>
 </idea-plugin>
