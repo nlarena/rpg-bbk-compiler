@@ -11,7 +11,7 @@ Para el contexto arquitectónico de cada item ver [`docs/architecture.md`](docs/
 - [x] Arquitectura inicial documentada (`docs/architecture.md`)
 - [x] Estructura de módulos del monorepo (9 subproyectos)
 - [x] README + `.gitignore` + `LICENSE`
-- [x] Repo público creado en GitHub: `NicLarUniversidad/BoxBreaker`
+- [x] Repo público creado en GitHub: `NicLarUniversidad/rpg-bbk-compiler`
 
 ## En curso
 

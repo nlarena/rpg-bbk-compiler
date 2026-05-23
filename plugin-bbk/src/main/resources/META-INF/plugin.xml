@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.larena.boxbreaker.bbk</id>
     <name>BoxBreaker (BBK)</name>
-    <vendor email="nic.lar.fts@gmail.com" url="https://github.com/NicLarUniversidad/BoxBreaker">NicoLarena</vendor>
+    <vendor email="nic.lar.fts@gmail.com" url="https://github.com/NicLarUniversidad/rpg-bbk-compiler">NicoLarena</vendor>
 
     <description><![CDATA[
         Soporte de lenguaje BBK (BoxBreaker) en IntelliJ.

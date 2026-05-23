@@ -2,7 +2,7 @@
 
 > **RPG → C.** Toolchain para compilar y ejecutar programas RPG (IBM i / AS/400) en Windows y Linux, mediante un lenguaje intermedio propio llamado **BBK (BoxBreaker)**.
 
-**Repo:** [github.com/NicLarUniversidad/BoxBreaker](https://github.com/NicLarUniversidad/BoxBreaker)
+**Repo:** [github.com/NicLarUniversidad/rpg-bbk-compiler](https://github.com/NicLarUniversidad/rpg-bbk-compiler)
 **Estado:** alpha — diseño inicial, en desarrollo activo.
 
 ---

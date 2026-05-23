@@ -1,6 +1,6 @@
 # Arquitectura — BoxBreaker
 
-**Repo:** [github.com/NicLarUniversidad/BoxBreaker](https://github.com/NicLarUniversidad/BoxBreaker)
+**Repo:** [github.com/NicLarUniversidad/rpg-bbk-compiler](https://github.com/NicLarUniversidad/rpg-bbk-compiler)
 **Tagline:** RPG → C
 **Fecha del documento:** 2026-05-22
 **Estado:** diseño inicial, sin código todavía
