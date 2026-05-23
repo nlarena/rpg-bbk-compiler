@@ -53,6 +53,18 @@ public class BbkVarModifierImpl extends ASTWrapperPsiElement implements BbkVarMo
 
   @Override
   @Nullable
+  public BbkOverlayModifier getOverlayModifier() {
+    return findChildByClass(BbkOverlayModifier.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkPosModifier getPosModifier() {
+    return findChildByClass(BbkPosModifier.class);
+  }
+
+  @Override
+  @Nullable
   public BbkQualifiedModifier getQualifiedModifier() {
     return findChildByClass(BbkQualifiedModifier.class);
   }

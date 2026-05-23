@@ -139,6 +139,31 @@ STR_SINGLE = \' ( [^\'\\\r\n] | \\ . )* \'
   "on-error"           { return KW_ON_ERROR; }
   "on-exit"            { return KW_ON_EXIT; }
 
+  // ----- File operations (L5) -----
+  "read"               { return KW_READ; }
+  "reade"              { return KW_READE; }
+  "readp"              { return KW_READP; }
+  "readpe"             { return KW_READPE; }
+  "chain"              { return KW_CHAIN; }
+  "setll"              { return KW_SETLL; }
+  "setgt"              { return KW_SETGT; }
+  "write"              { return KW_WRITE; }
+  "update"             { return KW_UPDATE; }
+  "delete"             { return KW_DELETE; }
+  "unlock"             { return KW_UNLOCK; }
+  "open"               { return KW_OPEN; }
+  "close"              { return KW_CLOSE; }
+  "exfmt"              { return KW_EXFMT; }
+
+  // ----- Subroutines (L5) -----
+  "BEGSR"              { return KW_BEGSR; }
+  "ENDSR"              { return KW_ENDSR; }
+  "EXSR"               { return KW_EXSR; }
+  "LEAVESR"            { return KW_LEAVESR; }
+
+  // ----- Procedure call as statement (L5) -----
+  "CALLP"              { return KW_CALLP; }
+
   // ----- Control flow keywords (C-style) -----
   "if"                 { return KW_IF; }
   "else"               { return KW_ELSE; }

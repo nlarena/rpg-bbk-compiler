@@ -1,0 +1,41 @@
+// Errors: malformed DCL-PR prototypes and DCL-PROC definitions.
+
+// ----- Prototype errors -----
+
+DCL-PR;                               // missing name
+DCL-PR sum                            // missing ; (and optional everything else)
+DCL-PR sum(;                          // unterminated param list
+DCL-PR sum(a INT(10),);               // trailing comma in params
+DCL-PR sum(a);                        // param missing type
+DCL-PR sum(INT(10));                  // param missing name
+DCL-PR sum() ->;                      // -> without return type
+DCL-PR sum() -> INT(10)               // missing ;
+DCL-PR foo EXTPGM();                  // EXTPGM requires STR_LIT
+DCL-PR foo EXTPGM(MyProgram);         // EXTPGM expects STR_LIT, not IDENT
+DCL-PR foo EXTPROC("name"             // unterminated
+
+// ----- Procedure definition errors -----
+
+DCL-PROC;                             // missing name
+DCL-PROC main                         // missing body (no { ... })
+DCL-PROC main(                        // unterminated param list
+DCL-PROC main() ->;                   // -> without return type
+DCL-PROC main(a INT(10),) {           // trailing comma in params
+  return a;
+}
+
+DCL-PROC body1 {                      // missing closing }
+  DCL-S x INT(10);
+  // never closed
+
+DCL-PROC body2 {
+  DCL-S x;                            // L1 error inside proc body: missing type
+  DCL-S y INT(10) INZ();              // L1 error: INZ without value
+}
+
+DCL-PROC unknownStuffIsFine {
+  // these aren't parsed yet by L3 — should NOT error
+  total = 5 + 7;
+  print("anything");
+  if (x > 0) { doSomething(); }
+}

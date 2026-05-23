@@ -1,0 +1,13 @@
+// Errors: malformed DCL-F declarations.
+
+DCL-F;                                // missing filename
+DCL-F customers;                      // missing keywords (need at least one)
+DCL-F customers DISK USAGE();         // USAGE requires at least one *X value
+DCL-F customers DISK USAGE(*INPUT:);  // trailing colon
+DCL-F customers DISK USAGE(input);    // USAGE expects STAR_IDENT, got IDENT
+DCL-F customers DISK EXTNAME(file);   // EXTNAME expects STR_LIT, got IDENT
+DCL-F customers DISK EXTNAME("file"   // unterminated args
+DCL-F customers DISK PREFIX();        // PREFIX requires IDENT
+DCL-F customers DISK RENAME(a);       // RENAME requires two identifiers separated by colon
+DCL-F customers DISK INFDS();         // INFDS requires IDENT
+DCL-F customers DISK USAGE(*INPUT)    // missing ;

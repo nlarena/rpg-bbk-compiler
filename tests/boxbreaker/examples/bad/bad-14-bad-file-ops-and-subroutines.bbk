@@ -1,0 +1,51 @@
+// Errors: malformed file ops, subroutines, and CALLP.
+
+DCL-PROC fileOpErrors {
+  DCL-S key INT(10) INZ(100);
+
+  // ----- File ops with missing parts -----
+  read;                                  // missing file name
+  read customers customerRec             // missing ;
+  chain;                                 // missing key and file
+  chain key;                             // missing file
+  setll;                                 // missing key and file
+  setll *START;                          // missing file
+  write;                                 // missing target
+  open;                                  // missing file
+  close;                                 // missing file
+  exfmt;                                 // missing format
+
+  // ----- File ops with malformed args -----
+  reade ;                                // missing key expression
+  reade key                              // missing file and ;
+  chain ( orders;                        // unterminated parenthesized key
+  delete                                 // missing file
+}
+
+DCL-PROC subroutineErrors {
+
+  // ----- Subroutine definition errors -----
+  BEGSR;                                 // missing SR name
+  BEGSR mySR                             // missing ; after name
+  BEGSR mySR;                            // no ENDSR (unterminated)
+    DCL-S x INT(10);
+    x = 5;
+  // missing ENDSR
+
+  BEGSR otherSR;
+    x = 1;
+  ENDSR otherSR                          // missing trailing ;
+
+  // ----- EXSR errors -----
+  EXSR;                                  // missing SR name
+  EXSR mySR                              // missing ;
+
+  // ----- LEAVESR errors -----
+  LEAVESR                                // missing ;
+}
+
+DCL-PROC callpErrors {
+  CALLP;                                 // missing call expression
+  CALLP myProc                           // missing args parens and ;
+  CALLP myProc(a, b)                     // missing ;
+}

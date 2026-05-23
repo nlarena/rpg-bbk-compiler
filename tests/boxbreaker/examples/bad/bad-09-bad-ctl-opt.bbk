@@ -1,0 +1,10 @@
+// Errors: malformed CTL-OPT statements.
+
+CTL-OPT MAIN(;                    // unterminated args (no value, no closing paren)
+CTL-OPT MAIN(main                 // missing closing paren and ;
+CTL-OPT MAIN(main)                // missing ;
+CTL-OPT MAIN()                    // empty arg list (need at least one value inside)
+CTL-OPT OPTION(*A:);              // trailing colon — second value expected
+CTL-OPT OPTION(*A: : *B);         // empty value between colons
+CTL-OPT NOMAIN DEBUG              // missing ;
+CTL-OPT DFTACTGRP *NO;            // missing parens around argument

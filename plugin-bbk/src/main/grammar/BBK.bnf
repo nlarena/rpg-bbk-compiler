@@ -189,6 +189,31 @@
     ATTR_HALFDOWN="@halfdown"
     ATTR_TRUNC="@trunc"
 
+    // ----- File operations (L5) -----
+    KW_READ="read"
+    KW_READE="reade"
+    KW_READP="readp"
+    KW_READPE="readpe"
+    KW_CHAIN="chain"
+    KW_SETLL="setll"
+    KW_SETGT="setgt"
+    KW_WRITE="write"
+    KW_UPDATE="update"
+    KW_DELETE="delete"
+    KW_UNLOCK="unlock"
+    KW_OPEN="open"
+    KW_CLOSE="close"
+    KW_EXFMT="exfmt"
+
+    // ----- Subroutines (L5) -----
+    KW_BEGSR="BEGSR"
+    KW_ENDSR="ENDSR"
+    KW_EXSR="EXSR"
+    KW_LEAVESR="LEAVESR"
+
+    // ----- Procedure call as statement (L5) -----
+    KW_CALLP="CALLP"
+
     // ----- Comments (whitespace-like, skipped by lexer) -----
     LINE_COMMENT="regexp://[^\r\n]*"
     BLOCK_COMMENT="regexp:/\*.*\*/"
@@ -196,15 +221,31 @@
 }
 
 // =====================================================================
-// LAYER 1 — Variable and Constant Declarations (DCL-S, DCL-C)
-// Other top-level constructs fall through to unknown_item (no errors yet).
+// LAYERS 1 + 2 + 3 + 4 + 5 + 6 — Complete BBK syntax
+//   L1: DCL-S, DCL-C
+//   L2: CTL-OPT, DCL-F, DCL-DS (+ block syntax)
+//   L3: DCL-PR (prototypes), DCL-PROC (procedure definitions with body)
+//   L4: Statements (if/select/while/do/for/return/monitor/...) and
+//       expressions (full precedence hierarchy)
+//   L5: File ops (read/chain/write/...), subroutines (BEGSR/EXSR), CALLP
+//   L6: Preprocessor directives (PRE-IF/PRE-DEFINE/PRE-INCLUDE/...)
 // =====================================================================
 
 translation_unit ::= top_level_item*
 
 top_level_item ::= variable_declaration
                  | constant_declaration
+                 | ctl_opt_statement
+                 | data_structure_declaration
+                 | file_declaration
+                 | prototype_declaration
+                 | procedure_declaration
+                 | directive
                  | unknown_item
+
+// ---------------------------------------------------------------------
+// LAYER 1 — Variable and Constant Declarations
+// ---------------------------------------------------------------------
 
 // ----- Variable declaration: DCL-S name TYPE [modifiers]; -----
 variable_declaration ::= KW_DCL_S IDENT type_specification var_modifier* SEMI {pin=1}
@@ -228,13 +269,15 @@ private type_args_tail ::= COLON INT_LIT {pin=1}
 
 like_reference ::= (KW_LIKE | KW_LIKEDS | KW_LIKEREC) LPAREN IDENT RPAREN {pin=1}
 
-// ----- Variable modifiers -----
+// ----- Variable modifiers (reused by DS subfields) -----
 var_modifier ::= inz_modifier
                | static_modifier
                | export_modifier
                | dim_modifier
                | based_modifier
                | qualified_modifier
+               | overlay_modifier
+               | pos_modifier
 
 inz_modifier        ::= KW_INZ LPAREN modifier_value RPAREN {pin=1}
 static_modifier     ::= KW_STATIC
@@ -242,6 +285,8 @@ export_modifier     ::= KW_EXPORT
 dim_modifier        ::= KW_DIM LPAREN INT_LIT (COLON INT_LIT)? RPAREN {pin=1}
 based_modifier      ::= KW_BASED LPAREN IDENT RPAREN {pin=1}
 qualified_modifier  ::= KW_QUALIFIED
+overlay_modifier    ::= KW_OVERLAY LPAREN IDENT (COLON INT_LIT)? RPAREN {pin=1}
+pos_modifier        ::= KW_POS LPAREN INT_LIT RPAREN {pin=1}
 
 private modifier_value ::= literal | KW_TRUE | KW_FALSE | KW_NULL | STAR_IDENT | IDENT
 
@@ -253,6 +298,317 @@ const_wrapper ::= KW_CONST LPAREN (literal | IDENT) RPAREN {pin=1}
 // ----- Literal -----
 literal ::= INT_LIT | INT_LIT_HEX | INT_LIT_OCT | FLOAT_LIT | DEC_LIT | STR_LIT
 
-// ----- Fallback: anything we don't yet recognize, consumed silently -----
+// ---------------------------------------------------------------------
+// LAYER 2 — CTL-OPT, DCL-F, DCL-DS
+// ---------------------------------------------------------------------
+
+// ----- CTL-OPT: CTL-OPT keyword keyword(args:args)... ; -----
+ctl_opt_statement ::= KW_CTL_OPT ctl_opt_keyword* SEMI {pin=1}
+
+ctl_opt_keyword ::= IDENT ctl_opt_args?
+
+ctl_opt_args ::= LPAREN ctl_opt_arg (COLON ctl_opt_arg)* RPAREN {pin=1}
+
+private ctl_opt_arg ::= literal | KW_TRUE | KW_FALSE | KW_NULL | STAR_IDENT | IDENT
+
+// ----- File declaration: DCL-F name keyword(args)... ; -----
+file_declaration ::= KW_DCL_F IDENT f_keyword+ SEMI {pin=1}
+
+f_keyword ::= simple_f_keyword
+            | usage_f_keyword
+            | extname_f_keyword
+            | extfile_f_keyword
+            | prefix_f_keyword
+            | rename_f_keyword
+            | indds_f_keyword
+            | infds_f_keyword
+
+simple_f_keyword  ::= KW_KEYED | KW_USROPN | KW_DISK | KW_PRINTER | KW_WORKSTN | KW_SEQ
+usage_f_keyword   ::= KW_USAGE   LPAREN STAR_IDENT (COLON STAR_IDENT)* RPAREN {pin=1}
+extname_f_keyword ::= KW_EXTNAME LPAREN STR_LIT RPAREN {pin=1}
+extfile_f_keyword ::= KW_EXTFILE LPAREN STR_LIT RPAREN {pin=1}
+prefix_f_keyword  ::= KW_PREFIX  LPAREN IDENT (COLON INT_LIT)? RPAREN {pin=1}
+rename_f_keyword  ::= KW_RENAME  LPAREN IDENT COLON IDENT RPAREN {pin=1}
+indds_f_keyword   ::= KW_INDDS   LPAREN IDENT RPAREN {pin=1}
+infds_f_keyword   ::= KW_INFDS   LPAREN IDENT RPAREN {pin=1}
+
+// ----- Data structure: DCL-DS name modifiers* ( { subfields } | ; ) -----
+data_structure_declaration ::= KW_DCL_DS IDENT ds_modifier* ds_tail {pin=1}
+
+private ds_tail ::= ds_body | SEMI
+
+ds_body ::= LBRACE ds_subfield* RBRACE {pin=1}
+
+ds_subfield ::= IDENT type_specification var_modifier* SEMI {pin=1}
+
+ds_modifier ::= qualified_modifier
+              | template_modifier
+              | align_modifier
+              | dim_modifier
+              | based_modifier
+              | inz_modifier
+              | extname_ds_modifier
+              | likeds_ds_modifier
+              | likerec_ds_modifier
+              | infds_ds_modifier
+
+template_modifier     ::= KW_TEMPLATE
+align_modifier        ::= KW_ALIGN
+extname_ds_modifier   ::= KW_EXTNAME LPAREN STR_LIT RPAREN {pin=1}
+likeds_ds_modifier    ::= KW_LIKEDS  LPAREN IDENT RPAREN {pin=1}
+likerec_ds_modifier   ::= KW_LIKEREC LPAREN IDENT (COLON IDENT)? RPAREN {pin=1}
+infds_ds_modifier     ::= KW_INFDS   LPAREN IDENT RPAREN {pin=1}
+
+// ---------------------------------------------------------------------
+// LAYER 3 — Prototypes (DCL-PR) and Procedure definitions (DCL-PROC)
+// ---------------------------------------------------------------------
+
+// ----- Prototype: DCL-PR name(params)? -> ret? modifiers* ; -----
+prototype_declaration ::= KW_DCL_PR IDENT inline_param_list? return_type? pr_modifier* SEMI {pin=1}
+
+// ----- Procedure definition: DCL-PROC name(params)? -> ret? modifiers* { body } -----
+procedure_declaration ::= KW_DCL_PROC IDENT inline_param_list? return_type? proc_modifier* block_statement {pin=1}
+
+// ----- Inline parameter list -----
+inline_param_list ::= LPAREN inline_params? RPAREN {pin=1}
+
+private inline_params ::= inline_param (COMMA inline_param)*
+
+inline_param ::= IDENT type_specification param_modifier* {pin=2}
+
+// ----- Return type -----
+return_type ::= ARROW type_specification {pin=1}
+
+// ----- Procedure-level modifiers -----
+proc_modifier ::= KW_EXPORT | extproc_modifier
+
+// ----- Prototype-level modifiers -----
+pr_modifier ::= extpgm_modifier
+              | extproc_modifier
+              | KW_OPDESC
+              | KW_RTNPARM
+
+// ----- Parameter modifiers -----
+param_modifier ::= KW_VALUE
+                 | KW_CONST
+                 | KW_OPDESC
+                 | options_modifier
+
+extpgm_modifier  ::= KW_EXTPGM  LPAREN STR_LIT RPAREN {pin=1}
+extproc_modifier ::= KW_EXTPROC LPAREN STR_LIT RPAREN {pin=1}
+options_modifier ::= KW_OPTIONS LPAREN STAR_IDENT (COLON STAR_IDENT)* RPAREN {pin=1}
+
+// ---------------------------------------------------------------------
+// LAYER 4 — Statements and Expressions
+// ---------------------------------------------------------------------
+
+// ----- Unified block syntax (used by procedures, if, while, for, etc.) -----
+block_statement ::= LBRACE block_item* RBRACE {pin=1}
+
+block_item ::= variable_declaration
+             | constant_declaration
+             | data_structure_declaration
+             | subroutine_definition
+             | directive
+             | statement
+             | unknown_block_item
+
+// Block fallback: consume any token but stop at the closing RBRACE.
+private unknown_block_item ::= !RBRACE !<<eof>> any_token
+
+// ----- Statements -----
+statement ::= if_statement
+            | select_statement
+            | while_statement
+            | do_while_statement
+            | for_statement
+            | break_statement
+            | continue_statement
+            | return_statement
+            | monitor_statement
+            | file_op_statement       // L5
+            | exsr_statement          // L5
+            | leavesr_statement       // L5
+            | callp_statement         // L5
+            | expression_statement
+
+if_statement ::= KW_IF LPAREN expression RPAREN block_statement
+                 (KW_ELSE (if_statement | block_statement))? {pin=1}
+
+select_statement ::= KW_SELECT LBRACE when_clause+ other_clause? RBRACE {pin=1}
+when_clause ::= KW_WHEN LPAREN expression RPAREN block_statement {pin=1}
+other_clause ::= KW_OTHER block_statement {pin=1}
+
+while_statement ::= KW_WHILE LPAREN expression RPAREN block_statement {pin=1}
+
+do_while_statement ::= KW_DO block_statement KW_WHILE LPAREN expression RPAREN SEMI {pin=1}
+
+for_statement ::= KW_FOR LPAREN for_init? SEMI expression? SEMI for_update? RPAREN block_statement {pin=1}
+
+for_init ::= for_inline_decl | for_assignment | expression
+for_update ::= for_assignment | expression
+for_inline_decl ::= KW_DCL_S IDENT type_specification EQ expression {pin=1}
+for_assignment ::= lvalue assignment_op expression {pin=2}
+
+break_statement    ::= KW_BREAK SEMI {pin=1}
+continue_statement ::= KW_CONTINUE SEMI {pin=1}
+return_statement   ::= KW_RETURN expression? SEMI {pin=1}
+
+monitor_statement ::= KW_MONITOR block_statement on_error_clause* on_exit_clause? {pin=1}
+on_error_clause   ::= KW_ON_ERROR status_list? block_statement {pin=1}
+on_exit_clause    ::= KW_ON_EXIT block_statement {pin=1}
+status_list       ::= LPAREN expression (COMMA expression)* RPAREN {pin=1}
+
+// Expression statement covers both `expr;` and `lvalue = expr;`.
+// No pin on the outer so unrecognized statements (like file ops) backtrack
+// silently to unknown_block_item. The assignment_tail has an internal pin
+// so malformed assignments (e.g., `x = ;`) DO report errors.
+expression_statement ::= expression assignment_tail? SEMI
+
+private assignment_tail ::= assignment_op expression attribute_modifier? {pin=1}
+
+assignment_op ::= EQ | PLUS_EQ | MINUS_EQ | STAR_EQ | SLASH_EQ | PERCENT_EQ
+               | AMP_EQ | PIPE_EQ | CARET_EQ | LT_LT_EQ | GT_GT_EQ
+
+attribute_modifier ::= ATTR_HALFUP | ATTR_HALFDOWN | ATTR_TRUNC
+
+lvalue ::= postfix_expression
+
+// ----- Expressions: precedence chain from lowest to highest -----
+
+expression ::= ternary_expression
+
+ternary_expression ::= logical_or_expression (QUESTION expression COLON ternary_expression)?
+
+logical_or_expression  ::= logical_and_expression (PIPE_PIPE logical_and_expression)*
+logical_and_expression ::= bitwise_or_expression (AMP_AMP bitwise_or_expression)*
+bitwise_or_expression  ::= bitwise_xor_expression (PIPE bitwise_xor_expression)*
+bitwise_xor_expression ::= bitwise_and_expression (CARET bitwise_and_expression)*
+bitwise_and_expression ::= equality_expression (AMP equality_expression)*
+equality_expression    ::= relational_expression ((EQ_EQ | BANG_EQ) relational_expression)*
+relational_expression  ::= shift_expression ((LT | GT | LT_EQ | GT_EQ) shift_expression)*
+shift_expression       ::= additive_expression ((LT_LT | GT_GT) additive_expression)*
+additive_expression    ::= multiplicative_expression ((PLUS | MINUS) multiplicative_expression)*
+multiplicative_expression ::= power_expression ((STAR | SLASH | PERCENT) power_expression)*
+
+// Power is right-associative: a ** b ** c = a ** (b ** c)
+power_expression ::= unary_expression (STAR_STAR power_expression)?
+
+unary_expression ::= (PLUS | MINUS | BANG | TILDE) unary_expression
+                   | postfix_expression
+
+postfix_expression ::= primary postfix_suffix*
+
+primary ::= literal
+          | KW_TRUE | KW_FALSE | KW_NULL
+          | STAR_IDENT
+          | IDENT
+          | LPAREN expression RPAREN
+
+postfix_suffix ::= LPAREN argument_list? RPAREN              // function call
+                 | LBRACKET subscript_list RBRACKET           // array subscript
+                 | DOT IDENT                                   // member access
+                 | ARROW IDENT                                 // pointer member access
+
+argument_list  ::= expression (COMMA expression)*
+subscript_list ::= expression (COMMA expression)*
+
+// ---------------------------------------------------------------------
+// LAYER 5 — File operations, Subroutines, CALLP
+// ---------------------------------------------------------------------
+
+// ----- File operation statements -----
+file_op_statement ::= read_op
+                    | reade_op
+                    | readp_op
+                    | readpe_op
+                    | chain_op
+                    | setll_op
+                    | setgt_op
+                    | write_op
+                    | update_op
+                    | delete_op
+                    | unlock_op
+                    | open_op
+                    | close_op
+                    | exfmt_op
+
+// Sequential / random access reads
+read_op    ::= KW_READ    IDENT IDENT? SEMI {pin=1}                 // read file [ds]
+readp_op   ::= KW_READP   IDENT IDENT? SEMI {pin=1}                 // read prior
+reade_op   ::= KW_READE   expression IDENT IDENT? SEMI {pin=1}      // reade key file [ds]
+readpe_op  ::= KW_READPE  expression IDENT IDENT? SEMI {pin=1}      // reade prior
+
+// Random access by key
+chain_op   ::= KW_CHAIN   expression IDENT IDENT? SEMI {pin=1}      // chain key file [ds]
+setll_op   ::= KW_SETLL   expression IDENT SEMI {pin=1}             // setll key file
+setgt_op   ::= KW_SETGT   expression IDENT SEMI {pin=1}             // setgt key file
+
+// Updates / inserts
+write_op   ::= KW_WRITE   IDENT IDENT? SEMI {pin=1}                 // write format_or_file [ds]
+update_op  ::= KW_UPDATE  IDENT IDENT? SEMI {pin=1}                 // update format_or_file [ds]
+delete_op  ::= KW_DELETE  expression? IDENT SEMI {pin=1}            // delete [key] file
+
+// File lifecycle
+unlock_op  ::= KW_UNLOCK  IDENT SEMI {pin=1}
+open_op    ::= KW_OPEN    IDENT SEMI {pin=1}
+close_op   ::= KW_CLOSE   IDENT SEMI {pin=1}
+exfmt_op   ::= KW_EXFMT   IDENT IDENT? SEMI {pin=1}                 // exfmt format [ds]
+
+// ----- Subroutines -----
+subroutine_definition ::= KW_BEGSR IDENT SEMI sr_item* KW_ENDSR IDENT? SEMI {pin=1}
+
+sr_item ::= variable_declaration
+          | constant_declaration
+          | data_structure_declaration
+          | statement
+          | unknown_sr_item
+
+// SR body fallback: stop at ENDSR (closes this SR) or RBRACE (parent block) or EOF.
+private unknown_sr_item ::= !KW_ENDSR !RBRACE !<<eof>> any_token
+
+exsr_statement    ::= KW_EXSR IDENT SEMI {pin=1}
+leavesr_statement ::= KW_LEAVESR SEMI {pin=1}
+
+// ----- CALLP — explicit prefix for call-as-statement -----
+// Without CALLP, calls go through expression_statement (postfix expression + ()).
+callp_statement ::= KW_CALLP postfix_expression SEMI {pin=1}
+
+// ---------------------------------------------------------------------
+// LAYER 6 — Preprocessor directives (PRE-*)
+// ---------------------------------------------------------------------
+
+// Each directive is a flat statement. Pairing of IF/ELSEIF/ELSE/ENDIF
+// is validated semantically (not in the parser). Directives are line-
+// oriented (no SEMI terminator).
+
+directive ::= pre_if_directive
+            | pre_elseif_directive
+            | pre_else_directive
+            | pre_endif_directive
+            | pre_define_directive
+            | pre_undefine_directive
+            | pre_include_directive
+            | pre_eof_directive
+
+// ----- Conditional compilation -----
+pre_if_directive     ::= KW_PRE_IF expression {pin=1}
+pre_elseif_directive ::= KW_PRE_ELSEIF expression {pin=1}
+pre_else_directive   ::= KW_PRE_ELSE
+pre_endif_directive  ::= KW_PRE_ENDIF
+
+// ----- Macro definitions -----
+pre_define_directive   ::= KW_PRE_DEFINE IDENT pre_define_value? {pin=1}
+pre_undefine_directive ::= KW_PRE_UNDEFINE IDENT {pin=1}
+
+private pre_define_value ::= literal | STAR_IDENT
+
+// ----- Includes -----
+pre_include_directive ::= KW_PRE_INCLUDE (STR_LIT | IDENT) {pin=1}
+
+// ----- EOF marker -----
+pre_eof_directive ::= KW_PRE_EOF
+
+// ----- Top-level fallback: anything we don't yet recognize, consumed silently -----
 private unknown_item ::= !<<eof>> any_token
 external any_token ::= consumeAnyToken

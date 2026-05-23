@@ -1,0 +1,28 @@
+// Errors: malformed DCL-DS declarations.
+
+DCL-DS;                               // missing name
+DCL-DS person                         // missing body or trailing ;
+DCL-DS person QUALIFIED               // missing body or ; after modifiers
+
+// LIKEDS / LIKEREC / EXTNAME with bad arguments
+DCL-DS person LIKEDS();               // empty LIKEDS
+DCL-DS person LIKEDS("text");         // LIKEDS expects IDENT, not STR_LIT
+DCL-DS person LIKEDS(other            // unterminated args
+DCL-DS person EXTNAME(rec);           // EXTNAME expects STR_LIT, not IDENT
+DCL-DS person INFDS();                // INFDS requires IDENT
+
+// Body errors
+DCL-DS broken1 QUALIFIED {
+  field;                              // subfield missing type
+  another INT(10)                     // subfield missing ;
+  withoutType;                        // also missing type
+}
+
+DCL-DS broken2 QUALIFIED {
+  good   INT(10);                     // OK
+  bad    CHAR();                      // empty type args
+  third  PACKED(9:);                  // trailing colon in type args
+}
+
+DCL-DS unterminated {                 // body never closes (no matching })
+  field INT(10);

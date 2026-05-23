@@ -11,6 +11,24 @@ public interface BbkTopLevelItem extends BbkPsiElement {
   BbkConstantDeclaration getConstantDeclaration();
 
   @Nullable
+  BbkCtlOptStatement getCtlOptStatement();
+
+  @Nullable
+  BbkDataStructureDeclaration getDataStructureDeclaration();
+
+  @Nullable
+  BbkDirective getDirective();
+
+  @Nullable
+  BbkFileDeclaration getFileDeclaration();
+
+  @Nullable
+  BbkProcedureDeclaration getProcedureDeclaration();
+
+  @Nullable
+  BbkPrototypeDeclaration getPrototypeDeclaration();
+
+  @Nullable
   BbkVariableDeclaration getVariableDeclaration();
 
 }

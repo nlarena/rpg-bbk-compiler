@@ -35,6 +35,42 @@ public class BbkTopLevelItemImpl extends ASTWrapperPsiElement implements BbkTopL
 
   @Override
   @Nullable
+  public BbkCtlOptStatement getCtlOptStatement() {
+    return findChildByClass(BbkCtlOptStatement.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkDataStructureDeclaration getDataStructureDeclaration() {
+    return findChildByClass(BbkDataStructureDeclaration.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkDirective getDirective() {
+    return findChildByClass(BbkDirective.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkFileDeclaration getFileDeclaration() {
+    return findChildByClass(BbkFileDeclaration.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkProcedureDeclaration getProcedureDeclaration() {
+    return findChildByClass(BbkProcedureDeclaration.class);
+  }
+
+  @Override
+  @Nullable
+  public BbkPrototypeDeclaration getPrototypeDeclaration() {
+    return findChildByClass(BbkPrototypeDeclaration.class);
+  }
+
+  @Override
+  @Nullable
   public BbkVariableDeclaration getVariableDeclaration() {
     return findChildByClass(BbkVariableDeclaration.class);
   }

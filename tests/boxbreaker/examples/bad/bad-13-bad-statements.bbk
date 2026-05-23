@@ -1,0 +1,58 @@
+// Errors: malformed statements inside procedure bodies.
+// These exercise the Layer 4 grammar (statements + expressions).
+
+DCL-PROC controlErrors {
+  DCL-S x INT(10) INZ(0);
+  DCL-S name VARCHAR(50);
+
+  // ----- if/else -----
+  if x > 0 { }                        // missing parens around condition
+  if (x > 0) doSomething();           // missing braces around body
+  if () { }                           // empty condition
+  if (x > 0) { } else                 // else without body
+
+  // ----- while -----
+  while x > 0 { }                     // missing parens
+  while () { }                        // empty condition
+  while (x > 0)                       // missing body
+
+  // ----- do/while -----
+  do { } while x > 0;                 // missing parens on while
+  do x = x + 1;                       // missing braces (and while clause)
+  do { } while (x > 0)                // missing ;
+
+  // ----- for -----
+  for ; ; ;                           // no parens
+  for () { }                          // missing semicolons
+  for (i = 0; ; ) { }                 // valid in C; here might be OK or error depending on grammar
+  for (DCL-S i INT(10); i < 10; i += 1)   // missing init value for inline decl
+
+  // ----- select/when/other -----
+  select { other { } when (x > 0) { } }   // other before when (allowed by grammar but stylistically wrong; no error)
+  select { }                          // no when clauses (requires at least one)
+  when (x > 0) { }                    // when outside of select — falls to expression_statement
+
+  // ----- return / break / continue -----
+  return                              // missing ;
+  break                               // missing ;
+  continue                            // missing ;
+
+  // ----- assignments -----
+  x = ;                               // missing rhs
+  = 5;                                // missing lvalue
+  x +=;                               // missing rhs after compound op
+
+  // ----- expression errors -----
+  x = 5 +;                            // incomplete additive
+  x = (5 + 7;                         // unterminated parens
+  x = foo(;                           // unterminated call args
+  x = arr[;                           // unterminated subscript
+  x = a ? b;                          // ternary missing : and else
+}
+
+DCL-PROC monitorErrors {
+  monitor                             // missing body
+  monitor { } on-error                // on-error without body
+  monitor { } on-error ( ) { }        // empty status list (allowed by grammar — no error)
+  monitor { } on-error (404,) { }     // trailing comma in status list
+}

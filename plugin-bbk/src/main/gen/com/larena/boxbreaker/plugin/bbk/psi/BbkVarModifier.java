@@ -20,6 +20,12 @@ public interface BbkVarModifier extends BbkPsiElement {
   BbkInzModifier getInzModifier();
 
   @Nullable
+  BbkOverlayModifier getOverlayModifier();
+
+  @Nullable
+  BbkPosModifier getPosModifier();
+
+  @Nullable
   BbkQualifiedModifier getQualifiedModifier();
 
   @Nullable
