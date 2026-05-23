@@ -1,0 +1,24 @@
+CTL-OPT MAIN(procePrueba;)
+
+CTL-OPT MAIN(processOrders);
+
+DCL-DS customer QUALIFIED {
+  id     INT(10);
+  name   CHAR(50);
+  email  VARCHAR(100);
+}
+
+DCL-S currentCustomer LIKEDS(customer);
+DCL-C MAX_RETRIES 5;
+
+DCL-PROC processOrders {
+  DCL-S i INT(10);
+  DCL-S total PACKED(11:2);
+
+  currentCustomer.name = "Alice";
+  total = i * MAX_RETRIES;
+  exsr cleanup;
+  begsr cleanup;
+    total = 0;
+  endsr;
+}

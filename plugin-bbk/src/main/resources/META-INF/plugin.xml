@@ -31,6 +31,15 @@
             language="BBK"
             implementationClass="com.larena.boxbreaker.plugin.bbk.completion.BbkCompletionContributor"/>
 
+        <!-- Smart typing polish: ; jumps past ), and closers skip-over their existing match. -->
+        <typedHandler
+            implementation="com.larena.boxbreaker.plugin.bbk.editor.BbkSmartTypingHandler"/>
+
+        <!-- Block B: identifier resolution. -->
+        <psi.referenceContributor
+            language="BBK"
+            implementation="com.larena.boxbreaker.plugin.bbk.reference.BbkReferenceContributor"/>
+
         <!-- Block A: live templates. -->
         <defaultLiveTemplates file="/liveTemplates/Bbk.xml"/>
         <liveTemplateContext

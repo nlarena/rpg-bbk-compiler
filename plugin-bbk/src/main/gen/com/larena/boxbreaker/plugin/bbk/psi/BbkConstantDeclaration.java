@@ -4,8 +4,9 @@ package com.larena.boxbreaker.plugin.bbk.psi;
 import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiNamedElement;
 
-public interface BbkConstantDeclaration extends BbkPsiElement {
+public interface BbkConstantDeclaration extends PsiNamedElement {
 
   @Nullable
   BbkConstantValue getConstantValue();

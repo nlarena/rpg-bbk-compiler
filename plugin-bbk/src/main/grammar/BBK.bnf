@@ -14,6 +14,9 @@
   elementTypeClass="com.larena.boxbreaker.plugin.bbk.BbkElementType"
   tokenTypeClass="com.larena.boxbreaker.plugin.bbk.BbkTokenType"
 
+  // Block B: PSI naming. Named declarations use the BbkNamedElementMixin to satisfy
+  // PsiNameIdentifierOwner, so find-usages / rename / go-to-declaration can address them.
+
   tokens = [
     // ----- Identifiers -----
     IDENT="regexp:[a-zA-Z_][a-zA-Z0-9_]*"
@@ -248,10 +251,18 @@ top_level_item ::= variable_declaration
 // ---------------------------------------------------------------------
 
 // ----- Variable declaration: DCL-S name TYPE [modifiers]; -----
-variable_declaration ::= KW_DCL_S IDENT type_specification var_modifier* SEMI {pin=1}
+variable_declaration ::= KW_DCL_S IDENT type_specification var_modifier* SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 // ----- Constant declaration: DCL-C name VALUE; -----
-constant_declaration ::= KW_DCL_C IDENT constant_value SEMI {pin=1}
+constant_declaration ::= KW_DCL_C IDENT constant_value SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 // ----- Type specification -----
 type_specification ::= like_reference | primitive_type_spec
@@ -312,7 +323,11 @@ ctl_opt_args ::= LPAREN ctl_opt_arg (COLON ctl_opt_arg)* RPAREN {pin=1}
 private ctl_opt_arg ::= literal | KW_TRUE | KW_FALSE | KW_NULL | STAR_IDENT | IDENT
 
 // ----- File declaration: DCL-F name keyword(args)... ; -----
-file_declaration ::= KW_DCL_F IDENT f_keyword+ SEMI {pin=1}
+file_declaration ::= KW_DCL_F IDENT f_keyword+ SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 f_keyword ::= simple_f_keyword
             | usage_f_keyword
@@ -333,13 +348,21 @@ indds_f_keyword   ::= KW_INDDS   LPAREN IDENT RPAREN {pin=1}
 infds_f_keyword   ::= KW_INFDS   LPAREN IDENT RPAREN {pin=1}
 
 // ----- Data structure: DCL-DS name modifiers* ( { subfields } | ; ) -----
-data_structure_declaration ::= KW_DCL_DS IDENT ds_modifier* ds_tail {pin=1}
+data_structure_declaration ::= KW_DCL_DS IDENT ds_modifier* ds_tail {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 private ds_tail ::= ds_body | SEMI
 
 ds_body ::= LBRACE ds_subfield* RBRACE {pin=1}
 
-ds_subfield ::= IDENT type_specification var_modifier* SEMI {pin=1}
+ds_subfield ::= IDENT type_specification var_modifier* SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 ds_modifier ::= qualified_modifier
               | template_modifier
@@ -364,17 +387,29 @@ infds_ds_modifier     ::= KW_INFDS   LPAREN IDENT RPAREN {pin=1}
 // ---------------------------------------------------------------------
 
 // ----- Prototype: DCL-PR name(params)? -> ret? modifiers* ; -----
-prototype_declaration ::= KW_DCL_PR IDENT inline_param_list? return_type? pr_modifier* SEMI {pin=1}
+prototype_declaration ::= KW_DCL_PR IDENT inline_param_list? return_type? pr_modifier* SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 // ----- Procedure definition: DCL-PROC name(params)? -> ret? modifiers* { body } -----
-procedure_declaration ::= KW_DCL_PROC IDENT inline_param_list? return_type? proc_modifier* block_statement {pin=1}
+procedure_declaration ::= KW_DCL_PROC IDENT inline_param_list? return_type? proc_modifier* block_statement {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 // ----- Inline parameter list -----
 inline_param_list ::= LPAREN inline_params? RPAREN {pin=1}
 
 private inline_params ::= inline_param (COMMA inline_param)*
 
-inline_param ::= IDENT type_specification param_modifier* {pin=2}
+inline_param ::= IDENT type_specification param_modifier* {
+  pin=2
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 // ----- Return type -----
 return_type ::= ARROW type_specification {pin=1}
@@ -556,7 +591,11 @@ close_op   ::= KW_CLOSE   IDENT SEMI {pin=1}
 exfmt_op   ::= KW_EXFMT   IDENT IDENT? SEMI {pin=1}                 // exfmt format [ds]
 
 // ----- Subroutines -----
-subroutine_definition ::= KW_BEGSR IDENT SEMI sr_item* KW_ENDSR IDENT? SEMI {pin=1}
+subroutine_definition ::= KW_BEGSR IDENT SEMI sr_item* KW_ENDSR IDENT? SEMI {
+  pin=1
+  mixin="com.larena.boxbreaker.plugin.bbk.psi.BbkNamedElementMixin"
+  implements="com.intellij.psi.PsiNamedElement"
+}
 
 sr_item ::= variable_declaration
           | constant_declaration

@@ -3,6 +3,7 @@ package com.larena.boxbreaker.plugin.bbk.psi;
 
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiNamedElement;
 
 public class BbkVisitor extends PsiElementVisitor {
 
@@ -71,7 +72,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitConstantDeclaration(@NotNull BbkConstantDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitConstantValue(@NotNull BbkConstantValue o) {
@@ -95,7 +96,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitDataStructureDeclaration(@NotNull BbkDataStructureDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitDeleteOp(@NotNull BbkDeleteOp o) {
@@ -123,7 +124,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitDsSubfield(@NotNull BbkDsSubfield o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitEqualityExpression(@NotNull BbkEqualityExpression o) {
@@ -175,7 +176,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitFileDeclaration(@NotNull BbkFileDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitFileOpStatement(@NotNull BbkFileOpStatement o) {
@@ -219,7 +220,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitInlineParam(@NotNull BbkInlineParam o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitInlineParamList(@NotNull BbkInlineParamList o) {
@@ -371,11 +372,11 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitProcedureDeclaration(@NotNull BbkProcedureDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitPrototypeDeclaration(@NotNull BbkPrototypeDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitQualifiedModifier(@NotNull BbkQualifiedModifier o) {
@@ -451,7 +452,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitSubroutineDefinition(@NotNull BbkSubroutineDefinition o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitSubscriptList(@NotNull BbkSubscriptList o) {
@@ -499,7 +500,7 @@ public class BbkVisitor extends PsiElementVisitor {
   }
 
   public void visitVariableDeclaration(@NotNull BbkVariableDeclaration o) {
-    visitPsiElement(o);
+    visitPsiNamedElement(o);
   }
 
   public void visitWhenClause(@NotNull BbkWhenClause o) {
@@ -512,6 +513,10 @@ public class BbkVisitor extends PsiElementVisitor {
 
   public void visitWriteOp(@NotNull BbkWriteOp o) {
     visitPsiElement(o);
+  }
+
+  public void visitPsiNamedElement(@NotNull PsiNamedElement o) {
+    visitElement(o);
   }
 
   public void visitPsiElement(@NotNull BbkPsiElement o) {

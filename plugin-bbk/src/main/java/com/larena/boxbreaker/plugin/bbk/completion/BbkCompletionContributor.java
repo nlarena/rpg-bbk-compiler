@@ -43,6 +43,12 @@ public class BbkCompletionContributor extends CompletionContributor {
 
         // ----- Builtin functions -----
         extend(CompletionType.BASIC, BbkCompletionPatterns.anyBbkElement(), new BbkBifProvider());
+
+        // ----- Block B: user-declared identifiers (variables, procs, constants, ...) -----
+        extend(CompletionType.BASIC, BbkCompletionPatterns.anyBbkElement(), new BbkScopeCompletionProvider());
+
+        // ----- Block B: member access (subfields after `.`) -----
+        extend(CompletionType.BASIC, BbkCompletionPatterns.anyBbkElement(), new BbkMemberCompletionProvider());
     }
 
     @Override

@@ -241,3 +241,20 @@ After applying the closed decisions:
 | Recommended modified files | 1 | 1 |
 
 **Estimated effort:** 4–6 days (slightly above the prior 3–5 because of i18n routing and the BIF provider).
+
+---
+
+## 9. Post-Block A polish: smart typing handler
+
+Added after the first sandbox session surfaced this papercut:
+
+> Typing `MAIN(` (autocompleted) → `procName` → `;` produced `MAIN(procName;)` because the `;` landed at the caret instead of past the auto-inserted `)`.
+
+Resolved by one new class and one `plugin.xml` extension:
+
+| File | Responsibility |
+|---|---|
+| `editor/BbkSmartTypingHandler.java` | Extends `TypedHandlerDelegate`. Two rules: (a) typing `;` fast-forwards the caret past any trailing `)` characters before the platform inserts the `;`; (b) typing `)`, `}` or `]` while that exact char is at the caret just advances the caret (skip-over), mirroring Java/Kotlin behaviour. Active only inside `BbkFileType`. |
+| `META-INF/plugin.xml` | Adds `<typedHandler implementation="...BbkSmartTypingHandler"/>`. |
+
+This is not part of any of the planned blocks (B/C/D/E) — it's pure editor ergonomics that complements Block A's auto-paren `InsertHandler`s.

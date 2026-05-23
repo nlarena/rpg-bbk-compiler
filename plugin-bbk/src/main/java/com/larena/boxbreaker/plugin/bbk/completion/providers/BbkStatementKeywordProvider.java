@@ -48,8 +48,10 @@ public class BbkStatementKeywordProvider extends BbkKeywordProviderBase {
         out.add(Suggestion.full("begsr",    " <name> { ... }", type, BbkIcons.Category.STATEMENT, InsertHandlers.TRAILING_SPACE));
         out.add(Suggestion.full("exsr",     " <subr>;",        type, BbkIcons.Category.STATEMENT, InsertHandlers.TRAILING_SPACE));
 
-        // else: only when immediately after an if's block. Cheap approximation: always offer; refine in Block B.
-        out.add(Suggestion.full("else",     "{ ... }",         type, BbkIcons.Category.STATEMENT, InsertHandlers.BLOCK_ONLY));
+        // else: only when there is an if at the cursor's parent chain whose block has just closed.
+        if (elseLikelyValid(position)) {
+            out.add(Suggestion.full("else", "{ ... }",         type, BbkIcons.Category.STATEMENT, InsertHandlers.BLOCK_ONLY));
+        }
 
         // when / other: only inside a select block
         if (BbkCompletionPatterns.insideSelectBlock(position)) {
@@ -70,5 +72,19 @@ public class BbkStatementKeywordProvider extends BbkKeywordProviderBase {
         }
 
         return out;
+    }
+
+    /**
+     * Heuristic: {@code else} is offered if the cursor sits where an {@link BbkIfStatement}
+     * ancestor exists whose body ends before the cursor — i.e. the user just closed an
+     * {@code if} block and is typing the next token at the same nesting level. We accept
+     * any position inside or right after an {@code if} as a permissive default; false
+     * positives are acceptable since the keyword has no harmful effect when wrongly chosen.
+     */
+    private static boolean elseLikelyValid(@NotNull PsiElement position) {
+        return com.intellij.psi.util.PsiTreeUtil.getParentOfType(position,
+            com.larena.boxbreaker.plugin.bbk.psi.BbkIfStatement.class) != null
+            || com.intellij.psi.util.PsiTreeUtil.getPrevSiblingOfType(position,
+                com.larena.boxbreaker.plugin.bbk.psi.BbkIfStatement.class) != null;
     }
 }
