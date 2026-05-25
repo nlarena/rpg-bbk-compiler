@@ -49,6 +49,9 @@ public class BbkCompletionContributor extends CompletionContributor {
 
         // ----- Block B: member access (subfields after `.`) -----
         extend(CompletionType.BASIC, BbkCompletionPatterns.anyBbkElement(), new BbkMemberCompletionProvider());
+
+        // ----- Smart Completion: identifier list filtered by expected type at the caret -----
+        extend(CompletionType.SMART, BbkCompletionPatterns.anyBbkElement(), new BbkSmartCompletionProvider());
     }
 
     @Override
