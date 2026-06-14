@@ -1,0 +1,13 @@
+DCL-S sum INT(10) INZ(0);
+for (i = 1; i <= 10; i += 1) {
+  sum = sum + i;
+}
+print("Suma de 1 a 10:");
+print(sum);
+
+DCL-S n INT(10) INZ(7);
+if (n % 2 == 0) {
+  print("par");
+} else {
+  print("impar");
+}
