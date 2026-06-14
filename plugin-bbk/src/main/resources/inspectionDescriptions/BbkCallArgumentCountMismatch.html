@@ -1,0 +1,12 @@
+<html>
+<body>
+Reports a call with a different number of arguments than the procedure
+or prototype declares.
+<p><b>Bad:</b>
+<pre>DCL-PROC helper(n INT(10) VALUE) { ... }
+helper();
+helper(1, 2);</pre>
+<p><b>Good:</b>
+<pre>helper(42);</pre>
+</body>
+</html>

@@ -9,5 +9,6 @@ rootProject.name = "BoxBreaker"
 
 include(
     "plugin-bbk",
-    "boxbreaker-ide"
+    "boxbreaker-ide",
+    "rpg-frontend"
 )

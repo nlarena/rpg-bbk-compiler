@@ -1,0 +1,11 @@
+<html>
+<body>
+Reports a call <code>f(arg)</code> where the argument's type is not
+assignable to the corresponding positional parameter.
+<p><b>Bad:</b>
+<pre>DCL-PROC helper(n INT(10) VALUE) { ... }
+helper('abc');</pre>
+<p><b>Good:</b>
+<pre>helper(42);</pre>
+</body>
+</html>

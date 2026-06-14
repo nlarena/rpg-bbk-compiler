@@ -1,0 +1,10 @@
+<html>
+<body>
+Reports <code>INZ(value)</code> on a declaration whose value type is
+not assignable to the declared type.
+<p><b>Bad:</b>
+<pre>DCL-S counter INT(10) INZ('hola');</pre>
+<p><b>Good:</b>
+<pre>DCL-S counter INT(10) INZ(0);</pre>
+</body>
+</html>

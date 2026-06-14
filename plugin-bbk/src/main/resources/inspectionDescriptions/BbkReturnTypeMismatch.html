@@ -1,0 +1,15 @@
+<html>
+<body>
+Reports <code>return EXPR;</code> whose expression type does not fit the
+enclosing procedure's declared return type. Also reports returning a
+value from a <code>-&gt; VOID</code> procedure.
+<p><b>Bad:</b>
+<pre>DCL-PROC helper -&gt; INT(10) {
+  return 'abc';
+}</pre>
+<p><b>Good:</b>
+<pre>DCL-PROC helper -&gt; INT(10) {
+  return 42;
+}</pre>
+</body>
+</html>

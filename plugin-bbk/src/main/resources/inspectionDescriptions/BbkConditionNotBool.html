@@ -1,0 +1,12 @@
+<html>
+<body>
+Reports an <code>if</code>, <code>while</code>, <code>do/while</code>,
+<code>when</code> or <code>for</code>-loop test whose expression type
+is not assignable to <code>BOOL</code>.
+<p><b>Bad:</b>
+<pre>DCL-S counter INT(10);
+if (counter) { ... }</pre>
+<p><b>Good:</b>
+<pre>if (counter &gt; 0) { ... }</pre>
+</body>
+</html>

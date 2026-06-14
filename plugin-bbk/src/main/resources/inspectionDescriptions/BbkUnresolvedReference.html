@@ -1,0 +1,15 @@
+<html>
+<body>
+Reports a use of an identifier that does not resolve to any declaration
+visible in local scope or in the project-wide stub indexes.
+<p><b>Bad:</b>
+<pre>DCL-PROC main {
+  x = notDeclared + 1;
+}</pre>
+<p><b>Good:</b>
+<pre>DCL-PROC main {
+  DCL-S notDeclared INT(10);
+  x = notDeclared + 1;
+}</pre>
+</body>
+</html>

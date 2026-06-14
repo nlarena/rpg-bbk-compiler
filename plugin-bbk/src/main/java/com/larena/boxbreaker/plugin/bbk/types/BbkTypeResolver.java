@@ -2,7 +2,9 @@ package com.larena.boxbreaker.plugin.bbk.types;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.larena.boxbreaker.plugin.bbk.index.BbkIndexKeys;
 import com.larena.boxbreaker.plugin.bbk.psi.*;
+import com.larena.boxbreaker.plugin.bbk.reference.BbkProjectScopeLookup;
 import com.larena.boxbreaker.plugin.bbk.scope.BbkScopeWalker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,9 +46,22 @@ public final class BbkTypeResolver {
     public static @Nullable BbkDataStructureDeclaration dsOf(@NotNull PsiElement expression) {
         String name = bareIdentName(expression);
         if (name == null) return null;
-        PsiElement target = BbkScopeWalker.resolve(expression, name);
+        PsiElement target = resolveName(expression, name);
         if (target == null) return null;
         return followToDs(target, new HashSet<>());
+    }
+
+    /**
+     * Resolves {@code name} from {@code context}, preferring local scope and
+     * falling back to the project-wide data-structure stub index. The fallback
+     * is what makes member access work when the {@code LIKEDS(...)} target DS
+     * lives in another file.
+     */
+    private static @Nullable PsiElement resolveName(@NotNull PsiElement context, @NotNull String name) {
+        PsiElement local = BbkScopeWalker.resolve(context, name);
+        if (local != null) return local;
+        return BbkProjectScopeLookup.findFirst(
+            context.getProject(), name, BbkIndexKeys.DATA_STRUCTURE, BbkDataStructureDeclaration.class);
     }
 
     /**
@@ -64,7 +79,7 @@ public final class BbkTypeResolver {
             if (like != null) {
                 String referenced = identNameInside(like);
                 if (referenced != null) {
-                    PsiElement next = BbkScopeWalker.resolve(decl, referenced);
+                    PsiElement next = resolveName(decl, referenced);
                     if (next != null) return followToDs(next, visited);
                 }
             }
@@ -74,7 +89,7 @@ public final class BbkTypeResolver {
             if (like != null) {
                 String referenced = identNameInside(like);
                 if (referenced != null) {
-                    PsiElement next = BbkScopeWalker.resolve(decl, referenced);
+                    PsiElement next = resolveName(decl, referenced);
                     if (next != null) return followToDs(next, visited);
                 }
             }
@@ -84,7 +99,7 @@ public final class BbkTypeResolver {
             if (like != null) {
                 String referenced = identNameInside(like);
                 if (referenced != null) {
-                    PsiElement next = BbkScopeWalker.resolve(decl, referenced);
+                    PsiElement next = resolveName(decl, referenced);
                     if (next != null) return followToDs(next, visited);
                 }
             }

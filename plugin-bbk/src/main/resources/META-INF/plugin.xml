@@ -62,6 +62,74 @@
         <stubIndex implementation="com.larena.boxbreaker.plugin.bbk.index.BbkProcedureIndex"/>
         <stubIndex implementation="com.larena.boxbreaker.plugin.bbk.index.BbkFileDeclarationIndex"/>
 
+        <!-- Parameter info hints — Ctrl+P (feature #11) -->
+        <codeInsight.parameterInfo
+            language="BBK"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.parameterinfo.BbkParameterInfoHandler"/>
+
+        <!-- Quick documentation — Ctrl+Q (feature #12) -->
+        <lang.documentationProvider
+            language="BBK"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.documentation.BbkDocumentationProvider"/>
+
+        <!-- Type-aware inspections (feature #10) -->
+        <localInspection
+            language="BBK"
+            shortName="BbkAssignmentTypeMismatch"
+            displayName="Type mismatch in assignment"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkAssignmentTypeMismatchInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkReturnTypeMismatch"
+            displayName="Type mismatch in return"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkReturnTypeMismatchInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkCallArgumentTypeMismatch"
+            displayName="Type mismatch in call argument"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkCallArgumentTypeMismatchInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkCallArgumentCountMismatch"
+            displayName="Call argument count mismatch"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkCallArgumentCountMismatchInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkConditionNotBool"
+            displayName="Condition is not BOOL"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkConditionNotBoolInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkInzValueTypeMismatch"
+            displayName="Type mismatch in INZ value"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkInzValueTypeMismatchInspection"/>
+        <localInspection
+            language="BBK"
+            shortName="BbkUnresolvedReference"
+            displayName="Unresolved reference"
+            groupName="BBK"
+            enabledByDefault="true"
+            level="ERROR"
+            implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkUnresolvedReferenceInspection"/>
+
         <!-- Block A: live templates. -->
         <defaultLiveTemplates file="/liveTemplates/Bbk.xml"/>
         <liveTemplateContext

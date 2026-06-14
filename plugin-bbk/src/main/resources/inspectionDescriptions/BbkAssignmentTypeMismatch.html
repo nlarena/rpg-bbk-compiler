@@ -1,0 +1,14 @@
+<html>
+<body>
+Reports assignments whose right-hand side type is not assignable to the
+left-hand side's declared type. Implicit cross-kind conversions (e.g.,
+<code>INT</code> &rarr; <code>PACKED</code>) are NOT permitted in V1.
+<p><b>Bad:</b>
+<pre>DCL-S counter INT(10);
+DCL-S name CHAR(50);
+counter = name;</pre>
+<p><b>Good:</b>
+<pre>counter = 42;
+counter = %int(name);</pre>
+</body>
+</html>

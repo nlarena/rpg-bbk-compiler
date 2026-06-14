@@ -20,6 +20,9 @@ dependencies {
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
     testImplementation("junit:junit:4.13.2")
+    // For the round-trip validation test: translate RPG with the frontend, then
+    // confirm the generated BBK parses + type-checks with this plugin.
+    testImplementation(project(":rpg-frontend"))
 }
 
 intellijPlatform {
