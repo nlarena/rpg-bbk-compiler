@@ -56,23 +56,24 @@ story.append(HRFlowable(width="100%", thickness=2, color=ACCENT, spaceBefore=6, 
 # ===================== RESUMEN EJECUTIVO =====================
 story.append(Paragraph("Resumen", H1))
 story.append(Paragraph(
-    "El proyecto traduce RPG (legacy) a BBK (lenguaje propio moderno) y, a futuro, a C ejecutable. "
-    "De los 8 m&oacute;dulos del monorepo, el <b>plugin de IntelliJ para BBK</b> est&aacute; completo "
-    "(12/12 funcionalidades, 80 tests verdes). Reci&eacute;n se inici&oacute; el <b>frontend RPG&rarr;BBK</b>, "
-    "con el andamiaje del m&oacute;dulo creado. El n&uacute;cleo del compilador/int&eacute;rprete y el runtime "
-    "est&aacute;n sin empezar.", BODY))
+    "El proyecto traduce RPG (legacy) a BBK (lenguaje propio moderno) y, a futuro, a ejecutable. "
+    "El <b>plugin de IntelliJ para BBK</b> est&aacute; completo (12/12 funcionalidades, 80 tests). El "
+    "<b>frontend RPG&rarr;BBK</b> traduce programas free-form completos (loop validado con el plugin) y tiene un "
+    "<b>debugger</b> que muestra la traducci&oacute;n l&iacute;nea a l&iacute;nea. El <b>n&uacute;cleo</b> "
+    "(bbk-core, Java in-JVM, dos backends: bytecode JVM y C) arranc&oacute; con el lexer de BBK. El runtime "
+    "sigue sin empezar.", BODY))
 
 # Tarjetas de resumen
 summary_data = [[
     Paragraph('<b>plugin-bbk</b><br/><font size=8 color="#1f8a4c">COMPLETO</font><br/><font size=7 color="#5b6472">12/12 features &middot; 80 tests</font>', CELL),
-    Paragraph('<b>rpg-frontend</b><br/><font size=8 color="#b9770e">EN CURSO</font><br/><font size=7 color="#5b6472">traduce free-form completo &middot; 63 tests</font>', CELL),
-    Paragraph('<b>compilador / runtime</b><br/><font size=8 color="#9aa0ab">SIN EMPEZAR</font><br/><font size=7 color="#5b6472">5 m&oacute;dulos vac&iacute;os</font>', CELL),
+    Paragraph('<b>rpg-frontend + debugger</b><br/><font size=8 color="#1f8a4c">TRADUCE + VALIDADO</font><br/><font size=7 color="#5b6472">free-form completo &middot; 63 tests</font>', CELL),
+    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#b9770e">EN CURSO</font><br/><font size=7 color="#5b6472">lexer BBK &middot; Java in-JVM &middot; 9 tests</font>', CELL),
 ]]
 st = Table(summary_data, colWidths=[58*mm, 58*mm, 58*mm])
 st.setStyle(TableStyle([
     ("BACKGROUND", (0,0), (0,0), GREEN_BG),
-    ("BACKGROUND", (1,0), (1,0), AMBER_BG),
-    ("BACKGROUND", (2,0), (2,0), GREY_BG),
+    ("BACKGROUND", (1,0), (1,0), GREEN_BG),
+    ("BACKGROUND", (2,0), (2,0), AMBER_BG),
     ("BOX", (0,0), (-1,-1), 0.5, LINE),
     ("INNERGRID", (0,0), (-1,-1), 0.5, colors.white),
     ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
@@ -184,19 +185,27 @@ story.append(Paragraph(
     "verificado</b>: el BBK generado parsea sin errores con plugin-bbk (test round-trip en el build del plugin). "
     "El '*' se desambigua por contexto. &Uacute;nico gap l&eacute;xico deferido: asignaci&oacute;n compuesta "
     "(`+= -= *= /=`), ausente en la gram&aacute;tica. Detalle en <b>docs/rpg-frontend/overview.md</b>.", BODY))
+story.append(Paragraph(
+    "<b>M&oacute;dulo debugger:</b> muestra la traducci&oacute;n l&iacute;nea a l&iacute;nea (RPG a la izquierda con "
+    "n&uacute;mero de l&iacute;nea, BBK a la derecha) m&aacute;s el BBK completo. Ejecutable: "
+    "<font face='Courier'>gradlew :debugger:run --args=\"examples/sample.rpgle\"</font>. 5 tests.", BODY))
 
-# ===================== resto del compilador =====================
-story.append(Paragraph("3 &nbsp; N&uacute;cleo del compilador / int&eacute;rprete &mdash; sin empezar", H1))
-story.append(Paragraph("El coraz&oacute;n del proyecto. Todos los m&oacute;dulos est&aacute;n vac&iacute;os.", BODY))
+# ===================== núcleo =====================
+story.append(Paragraph("3 &nbsp; N&uacute;cleo del compilador (bbk-core) &mdash; en curso", H1))
+story.append(Paragraph(
+    "Toma el texto BBK del frontend y lo compila. Decisiones: <b>Java in-JVM</b> (el plugin lo invoca en el "
+    "mismo proceso, sin binarios nativos) y <b>dos backends</b>: BBK &rarr; <b>bytecode JVM</b> (corre en la JVM "
+    "del IDE) y BBK &rarr; <b>C</b>. Parser headless propio (no se reusa el del plugin, atado a IntelliJ).", BODY))
 core = [
-    ("docs/bbk-spec.md", "todo", "Especificaci&oacute;n formal de BBK (gram&aacute;tica, tipos, opcodes m&iacute;nimos)"),
-    ("Decidir lenguaje de bbk-core", "todo", "Java vs Kotlin"),
+    ("Lenguaje del n&uacute;cleo", "done", "Java in-JVM (decidido); reusa el estilo de lexer/AST/parser del frontend"),
+    ("Lexer de BBK", "done", "Completo, grounded en BBK.bnf: case-sensitive, operadores C-style, hex/oct/float/dec. 9 tests"),
+    ("AST + parser de BBK", "todo", "Toda la gram&aacute;tica BBK (declaraciones, statements, expresiones)"),
+    ("An&aacute;lisis sem&aacute;ntico", "todo", "Chequeo de tipos y resoluci&oacute;n a nivel compilador"),
+    ("IR compartido", "todo", "Representaci&oacute;n intermedia que consumen los dos backends"),
+    ("Backend BBK &rarr; bytecode JVM", "todo", "Emite .class (ASM) y corre en la JVM del IDE"),
+    ("Backend BBK &rarr; C", "todo", "Lowering a C + invocaci&oacute;n de gcc (AOT)"),
+    ("docs/bbk-spec.md", "todo", "Spec formal de BBK (hoy: BBK.bnf + gram&aacute;tica + ejemplos de facto)"),
     ("Decidir lenguaje de bbk-runtime", "todo", "Java vs C"),
-    ("bbk-core: AST/IR de BBK", "todo", "Representaci&oacute;n intermedia del lenguaje"),
-    ("bbk-core: an&aacute;lisis sem&aacute;ntico", "todo", "Chequeos de tipos y resoluci&oacute;n a nivel compilador"),
-    ("bbk-compiler: lowering BBK &rarr; C", "todo", "Generaci&oacute;n de C para opcodes core"),
-    ("bbk-compiler: invocaci&oacute;n de gcc", "todo", "Compilaci&oacute;n AOT del C generado"),
-    ("bbk-interpreter", "todo", "Int&eacute;rprete de BBK para modo desarrollo"),
 ]
 story.append(status_table(core, "Tarea"))
 

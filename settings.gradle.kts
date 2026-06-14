@@ -11,5 +11,6 @@ include(
     "plugin-bbk",
     "boxbreaker-ide",
     "rpg-frontend",
-    "debugger"
+    "debugger",
+    "bbk-core"
 )
