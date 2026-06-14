@@ -34,6 +34,30 @@ public final class RpgParser {
         return new RpgParser(RpgLexer.tokenize(source)).parseProgram();
     }
 
+    /** A top-level item together with the RPG source line range it spans. */
+    public record ItemSpan(RpgItem item, int startLine, int endLine) {}
+
+    /**
+     * Parses the program and records, for each top-level item, the RPG source
+     * line range it occupies. Used by the translation debugger to map RPG
+     * lines to the BBK they produce.
+     */
+    public List<ItemSpan> parseWithSpans() {
+        List<ItemSpan> spans = new ArrayList<>();
+        match(FREE_DIRECTIVE);   // the **FREE line produces no BBK item
+        while (!at(EOF)) {
+            int start = peek().line();
+            RpgItem item = parseItem();
+            int end = tokens.get(Math.max(0, pos - 1)).line();
+            spans.add(new ItemSpan(item, start, end));
+        }
+        return spans;
+    }
+
+    public static List<ItemSpan> parseSpans(String source) {
+        return new RpgParser(RpgLexer.tokenize(source)).parseWithSpans();
+    }
+
     // =======================================================================
     // Program
     // =======================================================================

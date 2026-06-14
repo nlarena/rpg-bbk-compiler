@@ -31,6 +31,13 @@ public final class BbkEmitter {
         return e.out.toString();
     }
 
+    /** Emits the BBK for a single top-level item (used by the translation debugger). */
+    public static String emit(RpgItem item) {
+        BbkEmitter e = new BbkEmitter();
+        e.emitItem(item);
+        return e.out.toString();
+    }
+
     private void emitItem(RpgItem item) {
         if (item instanceof RpgDeclaration d) emitDeclaration(d);
         else if (item instanceof RpgStatement s) emitStatement(s);
