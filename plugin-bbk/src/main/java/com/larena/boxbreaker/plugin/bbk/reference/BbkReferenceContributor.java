@@ -1,6 +1,5 @@
 package com.larena.boxbreaker.plugin.bbk.reference;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.*;
@@ -31,7 +30,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public class BbkReferenceContributor extends PsiReferenceContributor {
 
-    private static final Logger LOG = Logger.getInstance(BbkReferenceContributor.class);
 
     @Override
     public void registerReferenceProviders(@NotNull PsiReferenceRegistrar registrar) {
@@ -46,7 +44,6 @@ public class BbkReferenceContributor extends PsiReferenceContributor {
                     PsiElement ident = findIdentChild(element);
                     if (ident == null) return PsiReference.EMPTY_ARRAY;
                     TextRange range = ident.getTextRangeInParent();
-                    LOG.warn("BBK-REF: BbkPrimary '" + element.getText() + "' → BbkIdentReference");
                     return new PsiReference[]{ new BbkIdentReference(element, range) };
                 }
             });
@@ -61,7 +58,6 @@ public class BbkReferenceContributor extends PsiReferenceContributor {
                     PsiElement ident = findIdentChild(element);
                     if (ident == null) return PsiReference.EMPTY_ARRAY;
                     TextRange range = ident.getTextRangeInParent();
-                    LOG.warn("BBK-REF: BbkLikeReference '" + element.getText() + "' → BbkTypeReference");
                     return new PsiReference[]{ new BbkTypeReference(element, range) };
                 }
             });
@@ -76,7 +72,6 @@ public class BbkReferenceContributor extends PsiReferenceContributor {
                     PsiElement ident = findIdentChild(element);
                     if (ident == null) return PsiReference.EMPTY_ARRAY;
                     TextRange range = ident.getTextRangeInParent();
-                    LOG.warn("BBK-REF: BbkExsrStatement '" + element.getText() + "' → BbkSubroutineReference");
                     return new PsiReference[]{ new BbkSubroutineReference(element, range) };
                 }
             });
@@ -94,8 +89,6 @@ public class BbkReferenceContributor extends PsiReferenceContributor {
                     PsiElement lhs = findLhsOfMemberAccess(element);
                     if (lhs == null) return PsiReference.EMPTY_ARRAY;
                     TextRange range = ident.getTextRangeInParent();
-                    LOG.warn("BBK-REF: BbkPostfixSuffix '" + element.getText()
-                        + "' → BbkMemberReference (lhs=" + lhs.getText() + ")");
                     return new PsiReference[]{ new BbkMemberReference(element, range, lhs) };
                 }
             });

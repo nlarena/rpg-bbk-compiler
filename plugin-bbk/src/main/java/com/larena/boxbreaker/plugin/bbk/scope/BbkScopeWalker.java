@@ -39,9 +39,6 @@ public final class BbkScopeWalker {
     public static @Nullable BbkScope scopeAt(@NotNull PsiElement position) {
         PsiFile file = position.getContainingFile();
         if (!(file instanceof BbkFile bbkFile)) {
-            com.intellij.openapi.diagnostic.Logger.getInstance(BbkScopeWalker.class)
-                .warn("BBK-SCOPE: scopeAt() — file is NOT BbkFile, it is "
-                    + (file == null ? "null" : file.getClass().getSimpleName()));
             return null;
         }
 

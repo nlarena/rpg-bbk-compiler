@@ -50,7 +50,7 @@ story = []
 
 # ===================== PORTADA / HEADER =====================
 story.append(Paragraph("BoxBreaker — Informe de estado", H_TITLE))
-story.append(Paragraph("Proyecto rpg-bbk-compiler &nbsp;|&nbsp; Estado de tareas por m&oacute;dulo &nbsp;|&nbsp; 13 de junio de 2026", H_SUB))
+story.append(Paragraph("Proyecto rpg-bbk-compiler &nbsp;|&nbsp; Estado de tareas por m&oacute;dulo &nbsp;|&nbsp; 14 de junio de 2026", H_SUB))
 story.append(HRFlowable(width="100%", thickness=2, color=ACCENT, spaceBefore=6, spaceAfter=10))
 
 # ===================== RESUMEN EJECUTIVO =====================
@@ -60,20 +60,21 @@ story.append(Paragraph(
     "El <b>plugin de IntelliJ para BBK</b> est&aacute; completo (12/12 funcionalidades, 80 tests). El "
     "<b>frontend RPG&rarr;BBK</b> traduce programas free-form completos (loop validado con el plugin) y tiene un "
     "<b>debugger</b> que muestra la traducci&oacute;n l&iacute;nea a l&iacute;nea. El <b>n&uacute;cleo</b> "
-    "(bbk-core, Java in-JVM, dos backends: bytecode JVM y C) arranc&oacute; con el lexer de BBK. El runtime "
-    "sigue sin empezar.", BODY))
+    "(bbk-core, Java in-JVM) ya <b>compila y ejecuta BBK en la JVM</b> (lexer + AST + parser + backend a bytecode "
+    "con ASM) y <b>ambos backends (JVM y C) cubren todo el lenguaje no-SO</b>: procedimientos, decimales, arrays, "
+    "estructuras, subrutinas, monitor y builtins. El runtime sigue sin empezar.", BODY))
 
 # Tarjetas de resumen
 summary_data = [[
     Paragraph('<b>plugin-bbk</b><br/><font size=8 color="#1f8a4c">COMPLETO</font><br/><font size=7 color="#5b6472">12/12 features &middot; 80 tests</font>', CELL),
     Paragraph('<b>rpg-frontend + debugger</b><br/><font size=8 color="#1f8a4c">TRADUCE + VALIDADO</font><br/><font size=7 color="#5b6472">free-form completo &middot; 63 tests</font>', CELL),
-    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#b9770e">EN CURSO</font><br/><font size=7 color="#5b6472">lexer BBK &middot; Java in-JVM &middot; 9 tests</font>', CELL),
+    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#1f8a4c">EJECUTA BBK (2 backends no-SO)</font><br/><font size=7 color="#5b6472">lexer+AST+parser+bytecode+C &middot; 87 tests</font>', CELL),
 ]]
 st = Table(summary_data, colWidths=[58*mm, 58*mm, 58*mm])
 st.setStyle(TableStyle([
     ("BACKGROUND", (0,0), (0,0), GREEN_BG),
     ("BACKGROUND", (1,0), (1,0), GREEN_BG),
-    ("BACKGROUND", (2,0), (2,0), AMBER_BG),
+    ("BACKGROUND", (2,0), (2,0), GREEN_BG),
     ("BOX", (0,0), (-1,-1), 0.5, LINE),
     ("INNERGRID", (0,0), (-1,-1), 0.5, colors.white),
     ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
@@ -191,23 +192,43 @@ story.append(Paragraph(
     "<font face='Courier'>gradlew :debugger:run --args=\"examples/sample.rpgle\"</font>. 5 tests.", BODY))
 
 # ===================== núcleo =====================
-story.append(Paragraph("3 &nbsp; N&uacute;cleo del compilador (bbk-core) &mdash; en curso", H1))
+story.append(Paragraph("3 &nbsp; N&uacute;cleo del compilador (bbk-core) &mdash; <font color='#1f8a4c'>ejecuta BBK</font>", H1))
 story.append(Paragraph(
-    "Toma el texto BBK del frontend y lo compila. Decisiones: <b>Java in-JVM</b> (el plugin lo invoca en el "
-    "mismo proceso, sin binarios nativos) y <b>dos backends</b>: BBK &rarr; <b>bytecode JVM</b> (corre en la JVM "
-    "del IDE) y BBK &rarr; <b>C</b>. Parser headless propio (no se reusa el del plugin, atado a IntelliJ).", BODY))
+    "Toma el texto BBK del frontend y lo compila. <b>Java in-JVM</b> (el plugin lo invoca en el mismo proceso, sin "
+    "binarios nativos). Un solo AST de BBK alimenta <b>dos backends</b>: BBK &rarr; <b>bytecode JVM</b> "
+    "(corre in-process) y BBK &rarr; <b>C</b> (compila con gcc), ambos a la par. No hay IR separado: el AST + su an&aacute;lisis "
+    "<i>es</i> el IR (evita duplicar). Parser headless propio (el del plugin est&aacute; atado a IntelliJ).", BODY))
 core = [
-    ("Lenguaje del n&uacute;cleo", "done", "Java in-JVM (decidido); reusa el estilo de lexer/AST/parser del frontend"),
-    ("Lexer de BBK", "done", "Completo, grounded en BBK.bnf: case-sensitive, operadores C-style, hex/oct/float/dec. 9 tests"),
-    ("AST + parser de BBK", "todo", "Toda la gram&aacute;tica BBK (declaraciones, statements, expresiones)"),
-    ("An&aacute;lisis sem&aacute;ntico", "todo", "Chequeo de tipos y resoluci&oacute;n a nivel compilador"),
-    ("IR compartido", "todo", "Representaci&oacute;n intermedia que consumen los dos backends"),
-    ("Backend BBK &rarr; bytecode JVM", "todo", "Emite .class (ASM) y corre en la JVM del IDE"),
+    ("Lenguaje del n&uacute;cleo", "done", "Java in-JVM (decidido)"),
+    ("Lexer de BBK", "done", "Completo, grounded en BBK.bnf: case-sensitive, operadores C-style, hex/oct/float/dec"),
+    ("AST de BBK", "done", "Completo: 9 declaraciones, 17 statements, 11 expresiones (ternario, bitwise, [] vs ())"),
+    ("Parser de BBK", "done", "Toda la gram&aacute;tica; sin ambig&uuml;edad del '=' (== vs =); parsea el output del frontend"),
+    ("Backend BBK &rarr; bytecode JVM", "done",
+     "ASM &rarr; clase bbk.Main; corre in-process en la JVM. Enteros/bool/strings, aritm./bitwise/l&oacute;gica/ternario, "
+     "if/while/do-while/for/select, break/continue, print. <font face='Courier'>gradlew :bbk-core:run</font>"),
+    ("Backend JVM: lenguaje no-SO completo", "done",
+     "Procedimientos (DCL-PROC&rarr;m&eacute;todos, recursi&oacute;n, CTL-OPT MAIN), decimales exactos "
+     "(PACKED/ZONED&rarr;BigDecimal con escala+redondeo @halfup/@trunc), FLOAT, arrays (incl. arrays de DS), "
+     "estructuras (DCL-DS/TEMPLATE/LIKEDS), subrutinas (BEGSR/EXSR/LEAVESR), monitor/on-error, constantes, "
+     "valores especiales, 15 builtins puros. 73 tests. Deferido: OVERLAY, fechas, file/EXTPGM (SO)"),
+    ("Backend BBK &rarr; C: lenguaje no-SO completo", "done",
+     "A la par del JVM: emite C self-contained (prelude de helpers string/decimal/monitor). Procedimientos, "
+     "decimales (long double con escala), arrays (incl. de DS), estructuras, subrutinas, monitor (setjmp), "
+     "builtins. Compila con gcc (<font face='Courier'>--run-c</font>). Verificado por aserciones de texto + "
+     "runs gated por gcc (sin compilador local, se validan en otra PC). Deferido: OVERLAY, fechas, file (SO)"),
     ("Backend BBK &rarr; C", "todo", "Lowering a C + invocaci&oacute;n de gcc (AOT)"),
+    ("An&aacute;lisis sem&aacute;ntico compartido", "todo", "Resoluci&oacute;n de nombres + tipos (hoy el backend lo hace inline)"),
     ("docs/bbk-spec.md", "todo", "Spec formal de BBK (hoy: BBK.bnf + gram&aacute;tica + ejemplos de facto)"),
     ("Decidir lenguaje de bbk-runtime", "todo", "Java vs C"),
 ]
 story.append(status_table(core, "Tarea"))
+story.append(Paragraph(
+    "<b>87 tests verdes</b> en bbk-core. El loop completo del proyecto cierra de punta a punta: "
+    "RPG &rarr; frontend &rarr; texto BBK &rarr; bbk-core (parser &rarr; AST) &rarr; <b>dos backends</b> "
+    "(bytecode JVM que corre in-process, y C que compila con gcc). Ejemplos verificados: "
+    "<font face='Courier'>factorial(5)=120</font>, <font face='Courier'>price(199.95)*qty(3)=599.85</font> "
+    "(escala 2), arrays de DS, monitor atrapando divisi&oacute;n por cero. Decisiones abiertas: BigDecimal (JVM) "
+    "/ long double (C) vs BCD propio exacto; arrays 0-based.", BODY))
 
 story.append(Paragraph("4 &nbsp; Runtime (bbk-runtime) &mdash; sin empezar", H1))
 runtime = [

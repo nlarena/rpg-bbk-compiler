@@ -1,0 +1,16 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bbkBoxDark" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#79B8FF"/>
+      <stop offset="1" stop-color="#388BFD"/>
+    </linearGradient>
+  </defs>
+  <!-- Two halves of a broken box, split by a jagged crack -->
+  <path d="M6 9 L19 6 L21 9 L17 14 L21 19 L17 24 L21 29 L18 34 L6 31 Z"
+        fill="url(#bbkBoxDark)"/>
+  <path d="M34 9 L23 6 L21 9 L25 14 L21 19 L25 24 L21 29 L24 34 L34 31 Z"
+        fill="url(#bbkBoxDark)" opacity="0.7"/>
+  <!-- Crack highlight -->
+  <path d="M20 5 L17 14 L21 19 L17 24 L21 29 L19 35"
+        stroke="#0D1117" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

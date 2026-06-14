@@ -7,6 +7,10 @@ plugins {
     id("org.jetbrains.grammarkit") version "2023.3.0.3"
 }
 
+// Release version for the published plugin (overrides the root SNAPSHOT so the
+// distribution artifact is named plugin-bbk-1.0.0.zip).
+version = "1.0.0"
+
 repositories {
     mavenCentral()
     intellijPlatform {
@@ -27,6 +31,9 @@ dependencies {
 
 intellijPlatform {
     pluginConfiguration {
+        // Release version for the Marketplace (overrides the root SNAPSHOT version,
+        // which is fine for the other modules but not for a published artifact).
+        version = "1.0.0"
         ideaVersion {
             sinceBuild = "253"
             untilBuild = provider { null }

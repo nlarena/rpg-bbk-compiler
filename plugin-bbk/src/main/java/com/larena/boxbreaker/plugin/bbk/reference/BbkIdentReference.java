@@ -1,6 +1,5 @@
 package com.larena.boxbreaker.plugin.bbk.reference;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementResolveResult;
@@ -30,8 +29,6 @@ import java.util.List;
  */
 public class BbkIdentReference extends PsiPolyVariantReferenceBase<PsiElement> {
 
-    private static final Logger LOG = Logger.getInstance(BbkIdentReference.class);
-
     public BbkIdentReference(@NotNull PsiElement element, @NotNull TextRange rangeInElement) {
         super(element, rangeInElement);
     }
@@ -51,15 +48,10 @@ public class BbkIdentReference extends PsiPolyVariantReferenceBase<PsiElement> {
 
     private ResolveResult @NotNull [] resolveUncached() {
         String name = getValue();
-        LOG.warn("BBK-RESOLVE: looking up '" + name + "' from element " + getElement().getClass().getSimpleName());
         if (name.isEmpty()) return ResolveResult.EMPTY_ARRAY;
 
-        // 1) Local scope (Block B).
+        // 1) Local scope.
         List<PsiNamedElement> visible = BbkScopeWalker.allVisible(getElement());
-        LOG.warn("BBK-RESOLVE: local scope has " + visible.size() + " visible declarations");
-        for (PsiNamedElement d : visible) {
-            LOG.warn("BBK-RESOLVE:   - " + d.getClass().getSimpleName() + " name=" + d.getName());
-        }
         List<ResolveResult> results = new ArrayList<>();
         for (PsiNamedElement d : visible) {
             if (name.equalsIgnoreCase(d.getName())) {
@@ -67,12 +59,10 @@ public class BbkIdentReference extends PsiPolyVariantReferenceBase<PsiElement> {
             }
         }
         if (!results.isEmpty()) {
-            LOG.warn("BBK-RESOLVE: matched " + results.size() + " local — returning");
             return results.toArray(ResolveResult.EMPTY_ARRAY);
         }
-        LOG.warn("BBK-RESOLVE: no local match, falling back to project index");
 
-        // 2) Cross-file fallback via stub indexes (Block C).
+        // 2) Cross-file fallback via stub indexes.
         var project = getElement().getProject();
         for (BbkProcedureDeclaration p : BbkProjectScopeLookup.findInProject(
                 project, name, BbkIndexKeys.PROCEDURE, BbkProcedureDeclaration.class)) {
@@ -98,7 +88,6 @@ public class BbkIdentReference extends PsiPolyVariantReferenceBase<PsiElement> {
                 project, name, BbkIndexKeys.FILE_DECLARATION, BbkFileDeclaration.class)) {
             results.add(new PsiElementResolveResult(f));
         }
-        LOG.warn("BBK-RESOLVE: cross-file lookup returned " + results.size() + " results");
         return results.toArray(ResolveResult.EMPTY_ARRAY);
     }
 

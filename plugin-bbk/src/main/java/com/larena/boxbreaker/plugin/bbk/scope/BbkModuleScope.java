@@ -1,6 +1,5 @@
 package com.larena.boxbreaker.plugin.bbk.scope;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -22,8 +21,6 @@ import java.util.List;
  */
 public class BbkModuleScope implements BbkScope {
 
-    private static final Logger LOG = Logger.getInstance(BbkModuleScope.class);
-
     private final @NotNull BbkFile file;
 
     public BbkModuleScope(@NotNull BbkFile file) {
@@ -36,7 +33,6 @@ public class BbkModuleScope implements BbkScope {
         for (BbkTopLevelItem item : PsiTreeUtil.getChildrenOfTypeAsList(file, BbkTopLevelItem.class)) {
             collectFromItem(item, out);
         }
-        LOG.warn("BBK-SCOPE: ModuleScope of file " + file.getName() + " has " + out.size() + " declarations");
         return out;
     }
 

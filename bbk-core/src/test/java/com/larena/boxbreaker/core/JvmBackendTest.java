@@ -97,4 +97,64 @@ public class JvmBackendTest {
             "DCL-S b INT(10) INZ(4);\n" +
             "print(a < b && b < 10 ? \"yes\" : \"no\");"));
     }
+
+    @Test
+    public void floatingPointArithmetic() {
+        assertEquals("3.5", run("print(1.5 + 2.0);"));
+        assertEquals("3.5", run("print(7.0 / 2.0);"));
+        // mixed int/double promotes to double
+        assertEquals("5.5", run("print(5 + 0.5);"));
+        assertEquals("2.5", run(
+            "DCL-S x FLOAT(8) INZ(5.0);\n" +
+            "print(x / 2);"));
+    }
+
+    @Test
+    public void powerOperator() {
+        assertEquals("1024.0", run("print(2 ** 10);"));
+        assertEquals("9.0", run("print(3.0 ** 2.0);"));
+    }
+
+    @Test
+    public void stringConcatenation() {
+        assertEquals("count: 5", run("print(\"count: \" + 5);"));
+        assertEquals("ab", run("print(\"a\" + \"b\");"));
+        assertEquals("n=3.5", run("print(\"n=\" + 3.5);"));
+        assertEquals("flag: true", run("print(\"flag: \" + (1 < 2));"));
+    }
+
+    @Test
+    public void selectStatement() {
+        String prog =
+            "DCL-S n INT(10) INZ(2);\n" +
+            "select {\n" +
+            "  when (n == 1) { print(\"one\"); }\n" +
+            "  when (n == 2) { print(\"two\"); }\n" +
+            "  other { print(\"many\"); }\n" +
+            "}";
+        assertEquals("two", run(prog));
+    }
+
+    @Test
+    public void selectFallsThroughToOther() {
+        String prog =
+            "DCL-S n INT(10) INZ(9);\n" +
+            "select {\n" +
+            "  when (n == 1) { print(\"one\"); }\n" +
+            "  other { print(\"many\"); }\n" +
+            "}";
+        assertEquals("many", run(prog));
+    }
+
+    @Test
+    public void compoundBitwiseAssignment() {
+        assertEquals("8", run(
+            "DCL-S x INT(10) INZ(2);\n" +
+            "x <<= 2;\n" +     // 2 << 2 = 8
+            "print(x);"));
+        assertEquals("7", run(
+            "DCL-S y INT(10) INZ(5);\n" +
+            "y |= 2;\n" +      // 0b101 | 0b010 = 0b111 = 7
+            "print(y);"));
+    }
 }
