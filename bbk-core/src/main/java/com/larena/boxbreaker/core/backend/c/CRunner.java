@@ -36,7 +36,10 @@ public final class CRunner {
         Path exe = dir.resolve(isWindows() ? "program.exe" : "program");
         Files.writeString(cFile, toC(bbkSource), StandardCharsets.UTF_8);
 
-        run(new ProcessBuilder(compiler, cFile.toString(), "-o", exe.toString()), dir);
+        // -std=c11 for the C99/C11 features the back-end emits (mixed decls, snprintf,
+        // long double, // comments); -lm AFTER the source so the linker resolves the
+        // math symbols (powl/roundl/fmodl/sqrt/fabsl) the decimal/POW helpers use.
+        run(new ProcessBuilder(compiler, "-std=c11", cFile.toString(), "-o", exe.toString(), "-lm"), dir);
         return run(new ProcessBuilder(exe.toString()), dir);
     }
 

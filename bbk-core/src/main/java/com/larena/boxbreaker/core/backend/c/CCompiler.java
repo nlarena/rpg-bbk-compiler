@@ -46,6 +46,7 @@ public final class CCompiler {
     private record Sig(List<Ct> paramTypes, List<Boolean> paramArray, Ct ret) {}
 
     private static final String PRELUDE = """
+        #define __USE_MINGW_ANSI_STDIO 1
         #include <stdio.h>
         #include <stdlib.h>
         #include <string.h>
@@ -105,7 +106,11 @@ public final class CCompiler {
             strcpy(o, p); return r;
         }
         static long double bbk_round(long double v, int sc) { long double f = powl(10.0L, sc); return roundl(v * f) / f; }
-        static long double bbk_truncs(long double v, int sc) { long double f = powl(10.0L, sc); return truncl(v * f) / f; }
+        static long double bbk_truncs(long double v, int sc) {
+            long double f = powl(10.0L, sc), scaled = v * f, r = roundl(scaled);
+            if (fabsl(scaled - r) < 1e-6L) scaled = r;   // snap away binary-rep noise near an integer
+            return truncl(scaled) / f;
+        }
         """;
 
     private final StringBuilder out = new StringBuilder();
