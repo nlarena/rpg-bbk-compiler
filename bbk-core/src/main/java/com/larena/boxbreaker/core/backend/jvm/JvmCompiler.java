@@ -1,6 +1,10 @@
 package com.larena.boxbreaker.core.backend.jvm;
 
 import com.larena.boxbreaker.core.ast.*;
+import com.larena.boxbreaker.core.semantic.ProcSignature;
+import com.larena.boxbreaker.core.semantic.SemanticAnalyzer;
+import com.larena.boxbreaker.core.semantic.SemanticModel;
+import com.larena.boxbreaker.core.semantic.Type;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -80,8 +84,8 @@ public final class JvmCompiler {
     private MethodVisitor mv;
 
     // Module scope.
+    private SemanticModel model;                 // shared name resolution + types (single source of truth)
     private final Map<String, Binding> globals = new LinkedHashMap<>();
-    private final Map<String, BbkExpr> constants = new HashMap<>();
     private final Map<String, Sig> procs = new HashMap<>();
     private final Map<String, List<BbkDeclaration.Subfield>> dsTemplates = new HashMap<>();
     private final List<FieldDef> fieldDefs = new ArrayList<>();
@@ -101,13 +105,15 @@ public final class JvmCompiler {
     }
 
     private byte[] build(BbkProgram program) {
+        model = SemanticAnalyzer.analyze(program);      // resolve names + types once, up front
         cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         cw.visit(V17, ACC_PUBLIC | ACC_FINAL, INTERNAL, null, "java/lang/Object", null);
 
+        // procedure signatures and constants come from the shared model; this back-end only
+        // builds the physical layout (fields/slots) here.
+        model.procedures().forEach((name, sig) -> procs.put(name, toSig(sig)));
         for (BbkItem item : program.items()) {
             switch (item) {
-                case BbkDeclaration.Procedure p -> procs.put(p.name(), signatureOf(p));
-                case BbkDeclaration.Constant c -> constants.put(c.name(), c.value());
                 case BbkDeclaration.DataStructure d -> registerDs(d.name(), d.subfields(), d.modifiers(), true);
                 case BbkDeclaration.Variable v -> registerGlobalVar(v);
                 case BbkDeclaration.CtlOpt ctl -> { String m = mainOf(ctl); if (m != null) mainProc = m; }
@@ -193,7 +199,7 @@ public final class JvmCompiler {
         switch (item) {
             case BbkDeclaration.Variable v -> declareLocalVar(v);
             case BbkDeclaration.DataStructure d -> { registerDs(d.name(), d.subfields(), d.modifiers(), false); initLocalDs(d); }
-            case BbkDeclaration.Constant c -> constants.put(c.name(), c.value());
+            case BbkDeclaration.Constant c -> { }       // constants are inlined; the shared model holds them
             case BbkDeclaration ignored -> { }
             case BbkStatement s -> statement(s);
         }
@@ -446,7 +452,7 @@ public final class JvmCompiler {
             loadVar(b);
             return b.jt();
         }
-        BbkExpr c = constants.get(id.name());
+        BbkExpr c = model.constant(id.name());
         if (c != null) return expr(c);
         throw unsupported("undeclared name '" + id.name() + "'");
     }
@@ -759,74 +765,31 @@ public final class JvmCompiler {
     // Pure type inference (no emission)
     // -----------------------------------------------------------------------
 
-    private Jt typeOf(BbkExpr e) {
-        return switch (e) {
-            case BbkExpr.Identifier id -> {
-                Binding b = lookup(id.name());
-                if (b != null) yield b.jt();
-                BbkExpr c = constants.get(id.name());
-                if (c != null) yield typeOf(c);
-                throw unsupported("undeclared name '" + id.name() + "'");
-            }
-            case BbkExpr.BoolLit b -> Jt.BOOL;
-            case BbkExpr.NullLit n -> Jt.STRING;
-            case BbkExpr.StarIdent s -> starType(s.name());
-            case BbkExpr.Literal lit -> switch (lit.kind()) {
-                case INT, HEX, OCT -> Jt.LONG;
-                case FLOAT -> Jt.DOUBLE;
-                case DEC -> Jt.DECIMAL;
-                case STRING -> Jt.STRING;
+    /** The lowered type of an expression — delegated to the shared {@link SemanticModel}. */
+    private Jt typeOf(BbkExpr e) { return jt(model.type(e)); }
+
+    /** Map a shared semantic {@link Type} onto this back-end's {@link Jt}. */
+    private static Jt jt(Type t) {
+        if (t instanceof Type.Scalar s) {
+            return switch (s.kind()) {
+                case INT -> Jt.LONG; case FLOAT -> Jt.DOUBLE; case DECIMAL -> Jt.DECIMAL;
+                case STRING -> Jt.STRING; case BOOL -> Jt.BOOL;
             };
-            case BbkExpr.Unary u -> u.op() == BbkExpr.UnOp.NOT ? Jt.BOOL : typeOf(u.operand());
-            case BbkExpr.Ternary t -> typeOf(t.then());
-            case BbkExpr.Index ix -> arrayBinding(ix).jt();
-            case BbkExpr.Member m -> typeOfMember(m);
-            case BbkExpr.Call c -> typeOfCall(c);
-            case BbkExpr.Binary b -> switch (b.op()) {
-                case EQ, NE, LT, GT, LE, GE, AND, OR -> Jt.BOOL;
-                case BIT_AND, BIT_OR, BIT_XOR, SHL, SHR -> Jt.LONG;
-                case POW -> Jt.DOUBLE;
-                case ADD -> (typeOf(b.left()) == Jt.STRING || typeOf(b.right()) == Jt.STRING) ? Jt.STRING : wider(typeOf(b.left()), typeOf(b.right()));
-                default -> wider(typeOf(b.left()), typeOf(b.right()));
-            };
-        };
+        }
+        if (t instanceof Type.Array a) return jt(a.element());
+        if (t == Type.VOID) throw unsupported("void call used as a value");
+        throw unsupported("expression has no scalar type");
     }
 
-    private Jt typeOfMember(BbkExpr.Member m) {
-        if (m.target() instanceof BbkExpr.Index ix) return dsArrayField(ix, m.field()).jt();
-        Binding b = lookup(memberKey(m));
-        if (b == null) throw unsupported("unknown member '" + memberKey(m) + "'");
-        return b.jt();
-    }
-
-    private Jt typeOfCall(BbkExpr.Call c) {
-        if (!(c.target() instanceof BbkExpr.Identifier id)) throw unsupported("call to a non-name target");
-        Sig sig = procs.get(id.name());
-        if (sig != null) { if (sig.ret() == null) throw unsupported("void call used as a value"); return sig.ret(); }
-        return switch (id.name()) {
-            case "len", "int", "scan" -> Jt.LONG;
-            case "substr", "trim", "triml", "trimr", "lower", "upper", "replace", "char" -> Jt.STRING;
-            case "dec" -> Jt.DECIMAL;
-            case "float", "sqrt" -> Jt.DOUBLE;
-            case "abs" -> typeOf(c.args().get(0));
-            default -> throw unsupported("function '" + id.name() + "'");
-        };
+    private Sig toSig(ProcSignature sig) {
+        List<Jt> types = new ArrayList<>();
+        for (Type t : sig.paramTypes()) types.add(jt(t));
+        return new Sig(types, sig.paramArray(), sig.isVoid() ? null : jt(sig.returnType()));
     }
 
     // -----------------------------------------------------------------------
     // Declarations / bindings
     // -----------------------------------------------------------------------
-
-    private Sig signatureOf(BbkDeclaration.Procedure p) {
-        List<Jt> types = new ArrayList<>();
-        List<Boolean> arrays = new ArrayList<>();
-        for (BbkDeclaration.Parameter par : p.params()) {
-            types.add(jt(par.type()));
-            arrays.add(isArray(par.modifiers()));
-        }
-        Jt ret = p.returnType() == null ? null : jt(p.returnType());
-        return new Sig(types, arrays, ret);
-    }
 
     private void registerGlobalVar(BbkDeclaration.Variable v) {
         if (v.type() instanceof BbkType.Like like && like.kind() == BbkType.LikeKind.LIKEDS) {
@@ -1057,16 +1020,6 @@ public final class JvmCompiler {
             case "NULL" -> { mv.visitInsn(ACONST_NULL); return Jt.STRING; }
             default -> throw unsupported("special value '*" + n + "'");
         }
-    }
-
-    private Jt starType(String name) {
-        String n = (name.startsWith("*") ? name.substring(1) : name).toUpperCase();
-        return switch (n) {
-            case "ON", "OFF" -> Jt.BOOL;
-            case "ZERO", "ZEROS" -> Jt.LONG;
-            case "BLANK", "BLANKS", "NULL" -> Jt.STRING;
-            default -> throw unsupported("special value '*" + n + "'");
-        };
     }
 
     // -----------------------------------------------------------------------

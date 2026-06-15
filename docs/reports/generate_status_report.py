@@ -62,19 +62,23 @@ story.append(Paragraph(
     "<b>debugger</b> que muestra la traducci&oacute;n l&iacute;nea a l&iacute;nea. El <b>n&uacute;cleo</b> "
     "(bbk-core, Java in-JVM) ya <b>compila y ejecuta BBK en la JVM</b> (lexer + AST + parser + backend a bytecode "
     "con ASM) y <b>ambos backends (JVM y C) cubren todo el lenguaje no-SO</b>: procedimientos, decimales, arrays, "
-    "estructuras, subrutinas, monitor y builtins. El runtime sigue sin empezar.", BODY))
+    "estructuras, subrutinas, monitor y builtins. El <b>runtime</b> (bbk-runtime) qued&oacute; <b>inicializado</b> "
+    "como m&oacute;dulo Spring Boot (scaffold de Spring Initializr, servicio REST); falta construir la superficie "
+    "de IBM i (jobs, datos, spool, program calls) sobre esa base.", BODY))
 
 # Tarjetas de resumen
 summary_data = [[
     Paragraph('<b>plugin-bbk</b><br/><font size=8 color="#1f8a4c">COMPLETO</font><br/><font size=7 color="#5b6472">12/12 features &middot; 80 tests</font>', CELL),
-    Paragraph('<b>rpg-frontend + debugger</b><br/><font size=8 color="#1f8a4c">TRADUCE + VALIDADO</font><br/><font size=7 color="#5b6472">free-form completo &middot; 63 tests</font>', CELL),
-    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#1f8a4c">EJECUTA BBK (2 backends no-SO)</font><br/><font size=7 color="#5b6472">lexer+AST+parser+bytecode+C &middot; 87 tests</font>', CELL),
+    Paragraph('<b>rpg-frontend + debugger</b><br/><font size=8 color="#1f8a4c">TRADUCE + VALIDADO</font><br/><font size=7 color="#5b6472">free-form &middot; 63 tests</font>', CELL),
+    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#1f8a4c">EJECUTA BBK (2 backends)</font><br/><font size=7 color="#5b6472">bytecode+C &middot; sem&aacute;ntica compartida &middot; 97 tests</font>', CELL),
+    Paragraph('<b>bbk-runtime</b><br/><font size=8 color="#b9770e">INICIADO</font><br/><font size=7 color="#5b6472">scaffold Spring Boot &middot; 1 test</font>', CELL),
 ]]
-st = Table(summary_data, colWidths=[58*mm, 58*mm, 58*mm])
+st = Table(summary_data, colWidths=[43.5*mm, 43.5*mm, 43.5*mm, 43.5*mm])
 st.setStyle(TableStyle([
     ("BACKGROUND", (0,0), (0,0), GREEN_BG),
     ("BACKGROUND", (1,0), (1,0), GREEN_BG),
     ("BACKGROUND", (2,0), (2,0), GREEN_BG),
+    ("BACKGROUND", (3,0), (3,0), AMBER_BG),
     ("BOX", (0,0), (-1,-1), 0.5, LINE),
     ("INNERGRID", (0,0), (-1,-1), 0.5, colors.white),
     ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
@@ -214,31 +218,49 @@ core = [
     ("Backend BBK &rarr; C: lenguaje no-SO completo", "done",
      "A la par del JVM: emite C self-contained (prelude de helpers string/decimal/monitor). Procedimientos, "
      "decimales (long double con escala), arrays (incl. de DS), estructuras, subrutinas, monitor (setjmp), "
-     "builtins. Compila con gcc (<font face='Courier'>--run-c</font>). Verificado por aserciones de texto + "
-     "runs gated por gcc (sin compilador local, se validan en otra PC). Deferido: OVERLAY, fechas, file (SO)"),
-    ("Backend BBK &rarr; C", "todo", "Lowering a C + invocaci&oacute;n de gcc (AOT)"),
-    ("An&aacute;lisis sem&aacute;ntico compartido", "todo", "Resoluci&oacute;n de nombres + tipos (hoy el backend lo hace inline)"),
+     "builtins. <b>Verificado con gcc real</b> (WinLibs MinGW 16.1): compila+corre v&iacute;a "
+     "<font face='Courier'>--run-c</font>, los tests gated ejecutan (no se saltan). Deferido: OVERLAY, fechas, file (SO)"),
+    ("An&aacute;lisis sem&aacute;ntico compartido", "done",
+     "Paquete <font face='Courier'>semantic</font>: un solo analizador resuelve nombres + infiere el tipo de cada "
+     "expresi&oacute;n (Type neutral) y junta diagn&oacute;sticos. Los dos backends consumen el SemanticModel "
+     "(borrado el typeOf/lookup duplicado); solo conservan el storage f&iacute;sico. Unific&oacute; <font face='Courier'>**</font> a FLOAT"),
     ("docs/bbk-spec.md", "todo", "Spec formal de BBK (hoy: BBK.bnf + gram&aacute;tica + ejemplos de facto)"),
-    ("Decidir lenguaje de bbk-runtime", "todo", "Java vs C"),
+    ("Lenguaje de bbk-runtime", "done", "Spring Boot, servicio REST standalone (decidido sobre Rust)"),
 ]
 story.append(status_table(core, "Tarea"))
 story.append(Paragraph(
-    "<b>87 tests verdes</b> en bbk-core. El loop completo del proyecto cierra de punta a punta: "
+    "<b>97 tests verdes</b> en bbk-core. El loop completo del proyecto cierra de punta a punta: "
     "RPG &rarr; frontend &rarr; texto BBK &rarr; bbk-core (parser &rarr; AST) &rarr; <b>dos backends</b> "
-    "(bytecode JVM que corre in-process, y C que compila con gcc). Ejemplos verificados: "
-    "<font face='Courier'>factorial(5)=120</font>, <font face='Courier'>price(199.95)*qty(3)=599.85</font> "
-    "(escala 2), arrays de DS, monitor atrapando divisi&oacute;n por cero. Decisiones abiertas: BigDecimal (JVM) "
-    "/ long double (C) vs BCD propio exacto; arrays 0-based.", BODY))
+    "(bytecode JVM que corre in-process, y C que <b>compila+corre con gcc real</b> &mdash; WinLibs MinGW 16.1). "
+    "Verificado end-to-end en ambos: <font face='Courier'>factorial(5)=120</font>, "
+    "<font face='Courier'>price(199.95)*qty(3)=599.85</font> (escala 2), arrays de DS, procedimientos, select, "
+    "monitor atrapando divisi&oacute;n por cero. La verificaci&oacute;n con gcc destap&oacute; y corrigi&oacute; "
+    "dos bugs de MinGW + long double (stdio ANSI para <font face='Courier'>%Lf</font>; snap del truncado decimal). "
+    "Decisiones abiertas: BigDecimal (JVM) / long double (C) vs BCD propio exacto; arrays 0-based.", BODY))
 
-story.append(Paragraph("4 &nbsp; Runtime (bbk-runtime) &mdash; sin empezar", H1))
+story.append(Paragraph("4 &nbsp; Runtime (bbk-runtime) &mdash; <font color='#b9770e'>inicializado (scaffold Spring Boot)</font>", H1))
+story.append(Paragraph(
+    "Decisi&oacute;n (2026-06-14): el runtime es un <b>servicio Spring Boot standalone invocado por REST/HTTP</b> "
+    "(elegido sobre Rust). Va a manejar la superficie <i>gruesa</i> de IBM i (jobs, datos, spool, program calls); la "
+    "aritm&eacute;tica BCD/strings <b>no</b> cruza la red &mdash; queda local en bbk-core / el c&oacute;digo generado "
+    "(decisi&oacute;n #4 intacta). Por ahora el m&oacute;dulo est&aacute; <b>solo inicializado</b> con el scaffold de "
+    "Spring Initializr.", BODY))
 runtime = [
-    ("Job queues", "todo", "Emulaci&oacute;n de colas de trabajo IBM i"),
+    ("M&oacute;dulo Spring Boot inicializado", "done",
+     "Scaffold de Spring Initializr (Spring Boot 3.5.5, Gradle Kotlin DSL, Java 21). Booteable; compila sobre "
+     "Gradle 9.5 + JDK 25 (release 21). Test <font face='Courier'>contextLoads</font>"),
+    ("Jobs / sesiones", "todo", "Contexto de ejecuci&oacute;n por-job: usuario, estado, library list"),
+    ("Library list (*LIBL)", "todo", "Path de b&uacute;squeda de objetos por job"),
+    ("Acceso a datos / registros (DDS)", "todo", "Capa record-level. Falta elegir el almac&eacute;n (SQLite / H2 / Postgres)"),
+    ("Program calls (CALL a *PGM)", "todo", "Invocaci&oacute;n de otros programas dentro de un job"),
     ("Activation groups", "todo", "Grupos de activaci&oacute;n"),
-    ("Library lists", "todo", "Listas de bibliotecas"),
-    ("Acceso a datos estilo DDS", "todo", "Capa de acceso a archivos/registros"),
     ("Spool files", "todo", "Archivos de spool"),
+    ("Lado cliente (bytecode / C-AOT &rarr; runtime)", "todo", "Que el c&oacute;digo generado arranque un job y llame al runtime por HTTP"),
 ]
 story.append(status_table(runtime, "Tarea"))
+story.append(Paragraph(
+    "<b>1 test</b> en bbk-runtime (<font face='Courier'>contextLoads</font>): el contexto Spring arranca limpio. "
+    "La superficie de IBM i se construye sobre esta base.", BODY))
 
 story.append(Paragraph("5 &nbsp; Otros m&oacute;dulos &mdash; sin empezar", H1))
 others = [

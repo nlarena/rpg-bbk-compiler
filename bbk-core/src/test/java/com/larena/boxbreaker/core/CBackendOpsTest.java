@@ -101,7 +101,7 @@ public class CBackendOpsTest {
 
     @Test
     public void powerAndSelectAndMonitor() {
-        assertTrue(c("print(2 ** 10);").contains("powl("));
+        assertTrue(c("print(2 ** 10);").contains("pow("));   // ** is canonically FLOAT (matches the JVM back-end)
         String sel = c("DCL-S n INT(10) INZ(2);\nselect { when (n == 1) { print(\"a\"); } other { print(\"b\"); } }");
         assertTrue(sel.contains("if (n == 1LL) {"));
         assertTrue(sel.contains("} else {"));

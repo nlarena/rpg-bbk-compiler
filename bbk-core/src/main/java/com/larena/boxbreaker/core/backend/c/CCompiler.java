@@ -1,6 +1,10 @@
 package com.larena.boxbreaker.core.backend.c;
 
 import com.larena.boxbreaker.core.ast.*;
+import com.larena.boxbreaker.core.semantic.ProcSignature;
+import com.larena.boxbreaker.core.semantic.SemanticAnalyzer;
+import com.larena.boxbreaker.core.semantic.SemanticModel;
+import com.larena.boxbreaker.core.semantic.Type;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -113,9 +117,9 @@ public final class CCompiler {
         }
         """;
 
+    private SemanticModel model;                 // shared name resolution + types (single source of truth)
     private final StringBuilder out = new StringBuilder();
     private final Map<String, Binding> globals = new LinkedHashMap<>();
-    private final Map<String, BbkExpr> constants = new HashMap<>();
     private final Map<String, Sig> procs = new LinkedHashMap<>();
     private final Map<String, List<BbkDeclaration.Subfield>> dsTemplates = new HashMap<>();
     private final List<String> globalDecls = new ArrayList<>();
@@ -133,10 +137,10 @@ public final class CCompiler {
     }
 
     private String build(BbkProgram program) {
+        model = SemanticAnalyzer.analyze(program);      // resolve names + types once, up front
+        model.procedures().forEach((name, sig) -> procs.put(name, toSig(sig)));
         for (BbkItem item : program.items()) {
             switch (item) {
-                case BbkDeclaration.Procedure p -> procs.put(p.name(), signatureOf(p));
-                case BbkDeclaration.Constant c -> constants.put(c.name(), c.value());
                 case BbkDeclaration.DataStructure d -> registerDs(d.name(), d.subfields(), d.modifiers());
                 case BbkDeclaration.Variable v -> registerGlobalVar(v);
                 case BbkDeclaration.CtlOpt ctl -> { String m = mainOf(ctl); if (m != null) mainProc = m; }
@@ -205,7 +209,7 @@ public final class CCompiler {
         switch (item) {
             case BbkDeclaration.Variable v -> declareLocalVar(v);
             case BbkDeclaration.DataStructure d -> { registerDs(d.name(), d.subfields(), d.modifiers()); declareLocalDs(d); }
-            case BbkDeclaration.Constant c -> constants.put(c.name(), c.value());
+            case BbkDeclaration.Constant c -> { }       // constants are inlined; the shared model holds them
             case BbkDeclaration ignored -> { }
             case BbkStatement s -> statement(s);
         }
@@ -542,7 +546,7 @@ public final class CCompiler {
             if (b.array()) throw unsupported("array '" + id.name() + "' used as a scalar value");
             return new Cx(b.cname(), b.type(), b.scale());
         }
-        BbkExpr c = constants.get(id.name());
+        BbkExpr c = model.constant(id.name());
         if (c != null) return expr(c);
         throw unsupported("undeclared name '" + id.name() + "'");
     }
@@ -573,8 +577,8 @@ public final class CCompiler {
             return new Cx("bbk_cat(" + toStr(expr(b.left())) + ", " + toStr(expr(b.right())) + ")", Ct.STRING);
         }
         if (op == BbkExpr.BinOp.POW) {
-            return new Cx("powl(" + coerce(expr(b.left()), Ct.DECIMAL) + ", " + coerce(expr(b.right()), Ct.DECIMAL) + ")",
-                Ct.DECIMAL, Math.max(scaleHint(b.left()), 0));
+            // ** is canonically FLOAT in the shared model (matches the JVM back-end's Math.pow)
+            return new Cx("pow(" + coerce(expr(b.left()), Ct.DOUBLE) + ", " + coerce(expr(b.right()), Ct.DOUBLE) + ")", Ct.DOUBLE);
         }
         switch (op) {
             case EQ: case NE: case LT: case GT: case LE: case GE: return comparison(b);
@@ -642,7 +646,7 @@ public final class CCompiler {
         };
     }
 
-    private int scaleHint(BbkExpr e) { return Math.max(expr(e).scale(), 0); }
+    private int scaleHint(BbkExpr e) { return model.type(e).scaleOrZero(); }
 
     private Cx ternary(BbkExpr.Ternary t) {
         Cx then = expr(t.then());
@@ -764,65 +768,26 @@ public final class CCompiler {
     // Pure type inference (no emission)
     // -----------------------------------------------------------------------
 
-    private Ct typeOf(BbkExpr e) {
-        return switch (e) {
-            case BbkExpr.Identifier id -> {
-                Binding b = lookup(id.name());
-                if (b != null) yield b.type();
-                BbkExpr c = constants.get(id.name());
-                if (c != null) yield typeOf(c);
-                throw unsupported("undeclared name '" + id.name() + "'");
-            }
-            case BbkExpr.BoolLit b -> Ct.BOOL;
-            case BbkExpr.NullLit n -> Ct.STRING;
-            case BbkExpr.StarIdent s -> starType(s.name());
-            case BbkExpr.Literal lit -> switch (lit.kind()) {
-                case INT, HEX, OCT -> Ct.LONG;
-                case FLOAT -> Ct.DOUBLE;
-                case DEC -> Ct.DECIMAL;
-                case STRING -> Ct.STRING;
+    /** The lowered type of an expression — delegated to the shared {@link SemanticModel}. */
+    private Ct typeOf(BbkExpr e) { return ct(model.type(e)); }
+
+    /** Map a shared semantic {@link Type} onto this back-end's {@link Ct}. */
+    private static Ct ct(Type t) {
+        if (t instanceof Type.Scalar s) {
+            return switch (s.kind()) {
+                case INT -> Ct.LONG; case FLOAT -> Ct.DOUBLE; case DECIMAL -> Ct.DECIMAL;
+                case STRING -> Ct.STRING; case BOOL -> Ct.BOOL;
             };
-            case BbkExpr.Unary u -> u.op() == BbkExpr.UnOp.NOT ? Ct.BOOL : typeOf(u.operand());
-            case BbkExpr.Ternary t -> typeOf(t.then());
-            case BbkExpr.Index ix -> arrayRef(ix).type();
-            case BbkExpr.Member m -> typeOfMember(m);
-            case BbkExpr.Call c -> typeOfCall(c);
-            case BbkExpr.Binary b -> switch (b.op()) {
-                case EQ, NE, LT, GT, LE, GE, AND, OR -> Ct.BOOL;
-                case BIT_AND, BIT_OR, BIT_XOR, SHL, SHR -> Ct.LONG;
-                case POW -> Ct.DECIMAL;
-                case ADD -> (typeOf(b.left()) == Ct.STRING || typeOf(b.right()) == Ct.STRING) ? Ct.STRING : wider(typeOf(b.left()), typeOf(b.right()));
-                default -> wider(typeOf(b.left()), typeOf(b.right()));
-            };
-        };
+        }
+        if (t instanceof Type.Array a) return ct(a.element());
+        if (t == Type.VOID) throw unsupported("void call used as a value");
+        throw unsupported("expression has no scalar type");
     }
 
-    private Ct typeOfMember(BbkExpr.Member m) {
-        if (m.target() instanceof BbkExpr.Index ix) return dsArrayRefType(ix, m.field());
-        Binding b = lookup(memberKey(m));
-        if (b == null) throw unsupported("unknown member '" + memberKey(m) + "'");
-        return b.type();
-    }
-
-    private Ct dsArrayRefType(BbkExpr.Index ix, String field) {
-        BbkExpr.Identifier id = (BbkExpr.Identifier) ix.target();
-        Binding b = lookup(id.name() + "." + field);
-        if (b == null) throw unsupported("unknown DS-array field");
-        return b.type();
-    }
-
-    private Ct typeOfCall(BbkExpr.Call c) {
-        if (!(c.target() instanceof BbkExpr.Identifier id)) throw unsupported("call to a non-name target");
-        Sig sig = procs.get(id.name());
-        if (sig != null) { if (sig.ret() == null) throw unsupported("void call used as a value"); return sig.ret(); }
-        return switch (id.name()) {
-            case "len", "int", "scan" -> Ct.LONG;
-            case "substr", "trim", "triml", "trimr", "lower", "upper", "replace", "char" -> Ct.STRING;
-            case "dec" -> Ct.DECIMAL;
-            case "float", "sqrt" -> Ct.DOUBLE;
-            case "abs" -> typeOf(c.args().get(0));
-            default -> throw unsupported("function '" + id.name() + "'");
-        };
+    private Sig toSig(ProcSignature sig) {
+        List<Ct> types = new ArrayList<>();
+        for (Type t : sig.paramTypes()) types.add(ct(t));
+        return new Sig(types, sig.paramArray(), sig.isVoid() ? null : ct(sig.returnType()));
     }
 
     // -----------------------------------------------------------------------
@@ -837,16 +802,6 @@ public final class CCompiler {
             case "ZERO", "ZEROS" -> new Cx("0LL", Ct.LONG);
             case "BLANK", "BLANKS" -> new Cx("\"\"", Ct.STRING);
             case "NULL" -> new Cx("\"\"", Ct.STRING);
-            default -> throw unsupported("special value '*" + n + "'");
-        };
-    }
-
-    private Ct starType(String name) {
-        String n = (name.startsWith("*") ? name.substring(1) : name).toUpperCase();
-        return switch (n) {
-            case "ON", "OFF" -> Ct.BOOL;
-            case "ZERO", "ZEROS" -> Ct.LONG;
-            case "BLANK", "BLANKS", "NULL" -> Ct.STRING;
             default -> throw unsupported("special value '*" + n + "'");
         };
     }
@@ -888,13 +843,6 @@ public final class CCompiler {
             case DECIMAL -> "bbk_sdec(" + v.code() + ", " + Math.max(v.scale(), 0) + ")";
             case BOOL -> "((" + v.code() + ") ? \"true\" : \"false\")";
         };
-    }
-
-    private Sig signatureOf(BbkDeclaration.Procedure p) {
-        List<Ct> types = new ArrayList<>();
-        List<Boolean> arrays = new ArrayList<>();
-        for (BbkDeclaration.Parameter par : p.params()) { types.add(ct(par.type())); arrays.add(isArray(par.modifiers())); }
-        return new Sig(types, arrays, p.returnType() == null ? null : ct(p.returnType()));
     }
 
     private String prototype(String name, Sig sig) {
