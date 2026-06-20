@@ -7,6 +7,7 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiPolyVariantReference;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.ResolveResult;
+import com.larena.boxbreaker.plugin.bbk.builtins.BbkBuiltinRegistry;
 import com.larena.boxbreaker.plugin.bbk.psi.BbkLikeReference;
 import com.larena.boxbreaker.plugin.bbk.psi.BbkPostfixSuffix;
 import com.larena.boxbreaker.plugin.bbk.psi.BbkPrimary;
@@ -64,6 +65,11 @@ public class BbkUnresolvedReferenceInspection extends BbkInspectionBase {
 
                 if (!anyResolved) {
                     PsiElement ident = identNode.getPsi();
+                    // Los builtins (print, trim, len, ...) no tienen declaración PSI:
+                    // se reconocen por el catálogo, no se marcan como sin resolver.
+                    if (element instanceof BbkPrimary && BbkBuiltinRegistry.isBuiltin(ident.getText())) {
+                        return;
+                    }
                     holder.registerProblem(
                         ident,
                         "Unresolved reference: '" + ident.getText() + "'",

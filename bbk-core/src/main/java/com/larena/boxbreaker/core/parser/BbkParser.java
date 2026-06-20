@@ -24,12 +24,22 @@ public final class BbkParser {
     private final List<BbkToken> tokens;
     private int pos = 0;
 
+    /** Posición de fuente de cada item (por identidad) — para el debugger / IDE. */
+    private final java.util.IdentityHashMap<BbkItem, SourceSpan> positions = new java.util.IdentityHashMap<>();
+
     public BbkParser(List<BbkToken> tokens) {
         this.tokens = tokens;
     }
 
     public static BbkProgram parse(String source) {
         return new BbkParser(BbkLexer.tokenize(source)).parseProgram();
+    }
+
+    /** Como {@link #parse}, pero además devuelve el mapa de posiciones de fuente. */
+    public static ParsedProgram parseWithPositions(String source) {
+        BbkParser parser = new BbkParser(BbkLexer.tokenize(source));
+        BbkProgram program = parser.parseProgram();
+        return new ParsedProgram(program, new SourceMap(parser.positions));
     }
 
     // =======================================================================
@@ -43,6 +53,15 @@ public final class BbkParser {
     }
 
     private BbkItem parseItem() {
+        BbkToken start = peek();
+        BbkItem item = parseItemInner();
+        BbkToken end = pos > 0 ? tokens.get(pos - 1) : start;
+        positions.put(item, new SourceSpan(start.line(), start.column(),
+            end.line(), end.column() + end.text().length()));
+        return item;
+    }
+
+    private BbkItem parseItemInner() {
         if (at(KEYWORD)) {
             String kw = peek().text();
             switch (kw) {

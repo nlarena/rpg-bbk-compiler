@@ -12,6 +12,7 @@ include(
     "boxbreaker-ide",
     "rpg-frontend",
     "debugger",
+    "bbk-debugger",
     "bbk-core",
     "bbk-runtime"
 )

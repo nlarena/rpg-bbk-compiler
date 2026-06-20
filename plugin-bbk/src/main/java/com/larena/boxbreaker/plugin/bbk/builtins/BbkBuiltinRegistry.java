@@ -32,7 +32,27 @@ public final class BbkBuiltinRegistry {
     }
 
     static {
+        // ----- Core / output -----
+        add("print", "print(x)", "(void)",
+            "Prints a value to standard output.",
+            List.of(p("x", "The value to print.")),
+            "Writes <code>x</code> followed by a newline to standard output. Core intrinsic of the BBK runtime.");
+
         // ----- String functions -----
+        add("lower", "lower(s)", "CHAR/VARCHAR",
+            "Lowercases a string.",
+            List.of(p("s", "The string to convert.")),
+            "Returns <code>s</code> with every letter in lower case.");
+        add("upper", "upper(s)", "CHAR/VARCHAR",
+            "Uppercases a string.",
+            List.of(p("s", "The string to convert.")),
+            "Returns <code>s</code> with every letter in upper case.");
+        add("replace", "replace(s, old, new)", "CHAR/VARCHAR",
+            "Replaces occurrences of a substring.",
+            List.of(p("s", "The source string."),
+                p("old", "The substring to find."),
+                p("new", "The replacement substring.")),
+            "Returns <code>s</code> with every occurrence of <code>old</code> replaced by <code>new</code>.");
         add("trim", "trim(s)", "CHAR/VARCHAR",
             "Removes leading and trailing blanks.",
             List.of(p("s", "The string to trim.")),
@@ -83,6 +103,14 @@ public final class BbkBuiltinRegistry {
             "Truncates to integer.",
             List.of(p("n", "A numeric value.")),
             "Returns the integer part of <code>n</code>, truncating any fractional part.");
+        add("float", "float(n)", "FLOAT",
+            "Converts to floating point.",
+            List.of(p("n", "A numeric value.")),
+            "Returns <code>n</code> as a floating-point number.");
+        add("sqrt", "sqrt(n)", "FLOAT",
+            "Square root.",
+            List.of(p("n", "A non-negative numeric value.")),
+            "Returns the square root of <code>n</code>.");
         add("inth", "inth(n)", "INT",
             "Rounds to integer.",
             List.of(p("n", "A numeric value.")),

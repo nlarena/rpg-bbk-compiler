@@ -160,6 +160,12 @@
             level="ERROR"
             implementationClass="com.larena.boxbreaker.plugin.bbk.inspection.BbkUnresolvedReferenceInspection"/>
 
+        <!-- Run BBK: configuración de ejecución para que el botón ▶ corra un .bbk. -->
+        <configurationType
+            implementation="com.larena.boxbreaker.plugin.bbk.run.BbkRunConfigurationType"/>
+        <runConfigurationProducer
+            implementation="com.larena.boxbreaker.plugin.bbk.run.BbkRunConfigurationProducer"/>
+
         <!-- Block A: live templates. -->
         <defaultLiveTemplates file="/liveTemplates/Bbk.xml"/>
         <liveTemplateContext
@@ -174,4 +180,22 @@
             baseContextId="BBK"
             implementation="com.larena.boxbreaker.plugin.bbk.templates.BbkProcedureBodyTemplateContext"/>
     </extensions>
+
+    <actions>
+        <!-- Integración del debugger al IDE (Fase A, iterativa). -->
+        <action id="com.larena.boxbreaker.plugin.bbk.debug.RunBbk"
+                class="com.larena.boxbreaker.plugin.bbk.debug.RunBbkAction"
+                text="Run BBK"
+                description="Ejecuta el archivo BBK (backend JVM) y muestra la salida">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+        <action id="com.larena.boxbreaker.plugin.bbk.debug.TraceBbk"
+                class="com.larena.boxbreaker.plugin.bbk.debug.TraceBbkAction"
+                text="Trace BBK"
+                description="Ejecuta el archivo BBK en el debugger y muestra la traza paso a paso">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
