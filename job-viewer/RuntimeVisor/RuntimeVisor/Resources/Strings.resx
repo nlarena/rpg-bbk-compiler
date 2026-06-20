@@ -69,9 +69,50 @@
 
   <data name="MenuSelectOption" xml:space="preserve"><value>Seleccione una opción:</value></data>
   <data name="MenuOption1" xml:space="preserve"><value>1.  Trabajos activos                  WRKACTJOB</value></data>
+  <data name="MenuOption2" xml:space="preserve"><value>2.  Trabajar con archivos             WRKF</value></data>
+  <data name="MenuOption3" xml:space="preserve"><value>3.  SQL interactivo                   STRSQL</value></data>
   <data name="MenuPrompt" xml:space="preserve"><value>Opción/Comando ===&gt;</value></data>
+
+  <data name="SqlTitle" xml:space="preserve"><value>SQL interactivo                           STRSQL</value></data>
+  <data name="SqlPrompt" xml:space="preserve"><value>Sentencia SQL:</value></data>
+  <data name="SqlFkeys" xml:space="preserve"><value>F3=Volver    F6=Ejecutar</value></data>
+  <data name="SqlHint" xml:space="preserve"><value>Escribí una sentencia y F6 para ejecutarla.</value></data>
+  <data name="SqlRunning" xml:space="preserve"><value>Ejecutando…</value></data>
+  <data name="SqlNoRows" xml:space="preserve"><value>Sin resultados.</value></data>
+  <data name="SqlRowsOne" xml:space="preserve"><value>{0} fila.</value></data>
+  <data name="SqlRowsMany" xml:space="preserve"><value>{0} filas.</value></data>
+  <data name="SqlTruncated" xml:space="preserve"><value>Primeras {0} filas (truncado).</value></data>
+  <data name="SqlUpdated" xml:space="preserve"><value>{0} fila(s) afectada(s).</value></data>
   <data name="MenuFkeys" xml:space="preserve"><value>F3=Salir</value></data>
   <data name="MenuUnknownCommand" xml:space="preserve"><value>Opción/comando no reconocido: {0}</value></data>
+
+  <data name="FilesTitle" xml:space="preserve"><value>Crear archivo físico                      CRTPF</value></data>
+  <data name="FilesFile" xml:space="preserve"><value>Archivo</value></data>
+  <data name="FilesLibrary" xml:space="preserve"><value>Biblioteca</value></data>
+  <data name="FilesText" xml:space="preserve"><value>Texto</value></data>
+  <data name="FilesColField" xml:space="preserve"><value>Campo</value></data>
+  <data name="FilesColType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="FilesColLength" xml:space="preserve"><value>Largo</value></data>
+  <data name="FilesColDecimals" xml:space="preserve"><value>Decimales</value></data>
+  <data name="FilesFkeys" xml:space="preserve"><value>F3=Volver    F6=Crear</value></data>
+  <data name="FilesHint" xml:space="preserve"><value>Completá el archivo y sus campos, luego F6 para crear.</value></data>
+  <data name="FilesNeedName" xml:space="preserve"><value>Indicá archivo y biblioteca.</value></data>
+  <data name="FilesNeedFields" xml:space="preserve"><value>Agregá al menos un campo.</value></data>
+  <data name="FilesCreating" xml:space="preserve"><value>Creando archivo…</value></data>
+  <data name="FilesCreated" xml:space="preserve"><value>Archivo {0} creado (tabla {1}).</value></data>
+  <data name="FilesEditTitle" xml:space="preserve"><value>Cambiar archivo físico                    CHGPF</value></data>
+  <data name="FilesEditFkeys" xml:space="preserve"><value>F3=Volver    F6=Cambiar</value></data>
+  <data name="FilesUpdated" xml:space="preserve"><value>Archivo {0} modificado.</value></data>
+
+  <data name="FileListTitle" xml:space="preserve"><value>Trabajar con archivos                     WRKF</value></data>
+  <data name="FileListFkeys" xml:space="preserve"><value>F3=Volver    F5=Refrescar    F6=Crear    Intro=Cambiar</value></data>
+  <data name="FileListColFields" xml:space="preserve"><value>Campos</value></data>
+  <data name="FileListColTable" xml:space="preserve"><value>Tabla</value></data>
+  <data name="FileListRecordFormat" xml:space="preserve"><value>Formato de registro:</value></data>
+  <data name="FileListQuerying" xml:space="preserve"><value>Consultando archivos…</value></data>
+  <data name="FileListNone" xml:space="preserve"><value>No hay archivos declarados.</value></data>
+  <data name="FileListCountOne" xml:space="preserve"><value>{0} archivo.</value></data>
+  <data name="FileListCountMany" xml:space="preserve"><value>{0} archivos.</value></data>
 
   <data name="HeaderSystem" xml:space="preserve"><value>Sistema  . . . :</value></data>
   <data name="HeaderSubsystem" xml:space="preserve"><value>Subsistema . . :</value></data>

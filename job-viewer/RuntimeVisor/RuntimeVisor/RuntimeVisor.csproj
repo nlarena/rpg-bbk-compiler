@@ -71,6 +71,24 @@
     <Compile Include="JobsView.Designer.cs">
       <DependentUpon>JobsView.cs</DependentUpon>
     </Compile>
+    <Compile Include="FilesView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="FilesView.Designer.cs">
+      <DependentUpon>FilesView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FileListView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="FileListView.Designer.cs">
+      <DependentUpon>FileListView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SqlView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SqlView.Designer.cs">
+      <DependentUpon>SqlView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="RuntimeApiClient.cs" />
     <Compile Include="Strings.cs" />

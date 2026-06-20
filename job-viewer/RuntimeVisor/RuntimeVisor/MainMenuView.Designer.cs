@@ -16,6 +16,8 @@ namespace RuntimeVisor
         {
             this.lblHeader = new System.Windows.Forms.Label();
             this.lblOption1 = new System.Windows.Forms.Label();
+            this.lblOption2 = new System.Windows.Forms.Label();
+            this.lblOption3 = new System.Windows.Forms.Label();
             this.lblPrompt = new System.Windows.Forms.Label();
             this.txtCommand = new System.Windows.Forms.TextBox();
             this.lblStatus = new System.Windows.Forms.Label();
@@ -37,6 +39,24 @@ namespace RuntimeVisor
             this.lblOption1.Name = "lblOption1";
             this.lblOption1.Text = "1.  Trabajos activos                  WRKACTJOB";
             this.lblOption1.Click += new System.EventHandler(this.lblOption1_Click);
+            //
+            // lblOption2
+            //
+            this.lblOption2.AutoSize = true;
+            this.lblOption2.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.lblOption2.Location = new System.Drawing.Point(44, 84);
+            this.lblOption2.Name = "lblOption2";
+            this.lblOption2.Text = "2.  Trabajar con archivos             WRKF";
+            this.lblOption2.Click += new System.EventHandler(this.lblOption2_Click);
+            //
+            // lblOption3
+            //
+            this.lblOption3.AutoSize = true;
+            this.lblOption3.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.lblOption3.Location = new System.Drawing.Point(44, 110);
+            this.lblOption3.Name = "lblOption3";
+            this.lblOption3.Text = "3.  SQL interactivo                   STRSQL";
+            this.lblOption3.Click += new System.EventHandler(this.lblOption3_Click);
             //
             // lblPrompt
             //
@@ -85,6 +105,8 @@ namespace RuntimeVisor
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.txtCommand);
             this.Controls.Add(this.lblPrompt);
+            this.Controls.Add(this.lblOption3);
+            this.Controls.Add(this.lblOption2);
             this.Controls.Add(this.lblOption1);
             this.Controls.Add(this.lblHeader);
             this.Font = new System.Drawing.Font("Consolas", 10F);
@@ -99,6 +121,8 @@ namespace RuntimeVisor
 
         private System.Windows.Forms.Label lblHeader;
         private System.Windows.Forms.Label lblOption1;
+        private System.Windows.Forms.Label lblOption2;
+        private System.Windows.Forms.Label lblOption3;
         private System.Windows.Forms.Label lblPrompt;
         private System.Windows.Forms.TextBox txtCommand;
         private System.Windows.Forms.Label lblStatus;

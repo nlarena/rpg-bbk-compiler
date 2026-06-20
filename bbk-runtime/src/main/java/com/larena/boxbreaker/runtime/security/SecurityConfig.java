@@ -38,7 +38,10 @@ public class SecurityConfig {
             .formLogin(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/info").permitAll()
+                // /error debe ser permitAll: si no, cuando un endpoint autenticado lanza una
+                // excepción (400/409/...), el re-despacho a /error queda sin autenticación
+                // (el filtro JWT no corre en error-dispatch) y Spring lo enmascara como 401.
+                .requestMatchers("/api/auth/login", "/api/info", "/error").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e.authenticationEntryPoint(
                 (request, response, ex) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "authentication required")))

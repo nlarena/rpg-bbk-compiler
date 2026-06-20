@@ -69,9 +69,50 @@
 
   <data name="MenuSelectOption" xml:space="preserve"><value>Select an option:</value></data>
   <data name="MenuOption1" xml:space="preserve"><value>1.  Active jobs                       WRKACTJOB</value></data>
+  <data name="MenuOption2" xml:space="preserve"><value>2.  Work with files                  WRKF</value></data>
+  <data name="MenuOption3" xml:space="preserve"><value>3.  Interactive SQL                  STRSQL</value></data>
   <data name="MenuPrompt" xml:space="preserve"><value>Option/Command ===&gt;</value></data>
+
+  <data name="SqlTitle" xml:space="preserve"><value>Interactive SQL                           STRSQL</value></data>
+  <data name="SqlPrompt" xml:space="preserve"><value>SQL statement:</value></data>
+  <data name="SqlFkeys" xml:space="preserve"><value>F3=Back    F6=Run</value></data>
+  <data name="SqlHint" xml:space="preserve"><value>Type a statement and F6 to run it.</value></data>
+  <data name="SqlRunning" xml:space="preserve"><value>Running…</value></data>
+  <data name="SqlNoRows" xml:space="preserve"><value>No results.</value></data>
+  <data name="SqlRowsOne" xml:space="preserve"><value>{0} row.</value></data>
+  <data name="SqlRowsMany" xml:space="preserve"><value>{0} rows.</value></data>
+  <data name="SqlTruncated" xml:space="preserve"><value>First {0} rows (truncated).</value></data>
+  <data name="SqlUpdated" xml:space="preserve"><value>{0} row(s) affected.</value></data>
   <data name="MenuFkeys" xml:space="preserve"><value>F3=Exit</value></data>
   <data name="MenuUnknownCommand" xml:space="preserve"><value>Option/command not recognized: {0}</value></data>
+
+  <data name="FilesTitle" xml:space="preserve"><value>Create physical file                      CRTPF</value></data>
+  <data name="FilesFile" xml:space="preserve"><value>File</value></data>
+  <data name="FilesLibrary" xml:space="preserve"><value>Library</value></data>
+  <data name="FilesText" xml:space="preserve"><value>Text</value></data>
+  <data name="FilesColField" xml:space="preserve"><value>Field</value></data>
+  <data name="FilesColType" xml:space="preserve"><value>Type</value></data>
+  <data name="FilesColLength" xml:space="preserve"><value>Length</value></data>
+  <data name="FilesColDecimals" xml:space="preserve"><value>Decimals</value></data>
+  <data name="FilesFkeys" xml:space="preserve"><value>F3=Back    F6=Create</value></data>
+  <data name="FilesHint" xml:space="preserve"><value>Fill in the file and its fields, then F6 to create.</value></data>
+  <data name="FilesNeedName" xml:space="preserve"><value>Enter file and library.</value></data>
+  <data name="FilesNeedFields" xml:space="preserve"><value>Add at least one field.</value></data>
+  <data name="FilesCreating" xml:space="preserve"><value>Creating file…</value></data>
+  <data name="FilesCreated" xml:space="preserve"><value>File {0} created (table {1}).</value></data>
+  <data name="FilesEditTitle" xml:space="preserve"><value>Change physical file                      CHGPF</value></data>
+  <data name="FilesEditFkeys" xml:space="preserve"><value>F3=Back    F6=Change</value></data>
+  <data name="FilesUpdated" xml:space="preserve"><value>File {0} modified.</value></data>
+
+  <data name="FileListTitle" xml:space="preserve"><value>Work with files                           WRKF</value></data>
+  <data name="FileListFkeys" xml:space="preserve"><value>F3=Back    F5=Refresh    F6=Create    Enter=Change</value></data>
+  <data name="FileListColFields" xml:space="preserve"><value>Fields</value></data>
+  <data name="FileListColTable" xml:space="preserve"><value>Table</value></data>
+  <data name="FileListRecordFormat" xml:space="preserve"><value>Record format:</value></data>
+  <data name="FileListQuerying" xml:space="preserve"><value>Querying files…</value></data>
+  <data name="FileListNone" xml:space="preserve"><value>No files declared.</value></data>
+  <data name="FileListCountOne" xml:space="preserve"><value>{0} file.</value></data>
+  <data name="FileListCountMany" xml:space="preserve"><value>{0} files.</value></data>
 
   <data name="HeaderSystem" xml:space="preserve"><value>System . . . . :</value></data>
   <data name="HeaderSubsystem" xml:space="preserve"><value>Subsystem  . . :</value></data>

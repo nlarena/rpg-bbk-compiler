@@ -23,6 +23,8 @@ namespace RuntimeVisor
         {
             lblHeader.Text = Strings.MenuSelectOption;
             lblOption1.Text = Strings.MenuOption1;
+            lblOption2.Text = Strings.MenuOption2;
+            lblOption3.Text = Strings.MenuOption3;
             lblPrompt.Text = Strings.MenuPrompt;
             lblFkeys.Text = Strings.MenuFkeys;
         }
@@ -30,6 +32,16 @@ namespace RuntimeVisor
         private void lblOption1_Click(object sender, EventArgs e)
         {
             Navigate?.Invoke("JOBS");
+        }
+
+        private void lblOption2_Click(object sender, EventArgs e)
+        {
+            Navigate?.Invoke("FILELIST");
+        }
+
+        private void lblOption3_Click(object sender, EventArgs e)
+        {
+            Navigate?.Invoke("SQL");
         }
 
         private void txtCommand_KeyDown(object sender, KeyEventArgs e)
@@ -46,6 +58,14 @@ namespace RuntimeVisor
             if (cmd == "1" || cmd == "WRKACTJOB")
             {
                 Navigate?.Invoke("JOBS");
+            }
+            else if (cmd == "2" || cmd == "WRKF")
+            {
+                Navigate?.Invoke("FILELIST");
+            }
+            else if (cmd == "3" || cmd == "STRSQL")
+            {
+                Navigate?.Invoke("SQL");
             }
             else
             {

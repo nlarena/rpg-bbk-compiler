@@ -36,6 +36,22 @@ namespace RuntimeVisor
                     jobs.Navigate = NavigateTo;
                     view = jobs;
                     break;
+                case "FILES":
+                    FilesView filesView = new FilesView();
+                    filesView.Navigate = NavigateTo;
+                    view = filesView;
+                    break;
+                case "FILELIST":
+                    FileListView fileList = new FileListView();
+                    fileList.Navigate = NavigateTo;
+                    fileList.EditFile = OpenFileEditor;
+                    view = fileList;
+                    break;
+                case "SQL":
+                    SqlView sqlView = new SqlView();
+                    sqlView.Navigate = NavigateTo;
+                    view = sqlView;
+                    break;
                 case "EXIT":
                     Close();
                     return;
@@ -49,6 +65,17 @@ namespace RuntimeVisor
             _currentView = target;
             ApplyHeaderMode(target != "HOME");
             ShowView(view);
+        }
+
+        /// <summary>Abre la pantalla de archivo en modo edición (CHGPF) sobre el archivo dado.</summary>
+        private void OpenFileEditor(FileDto file)
+        {
+            FilesView editor = new FilesView();
+            editor.Navigate = NavigateTo;
+            editor.LoadForEdit(file);
+            _currentView = "FILES";
+            ApplyHeaderMode(true);
+            ShowView(editor);
         }
 
         private void ShowView(UserControl view)

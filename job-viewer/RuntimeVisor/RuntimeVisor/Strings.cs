@@ -42,9 +42,53 @@ namespace RuntimeVisor
         // --- Menú principal (MainMenuView) ---
         public static string MenuSelectOption => Get();
         public static string MenuOption1 => Get();
+        public static string MenuOption2 => Get();
+        public static string MenuOption3 => Get();
         public static string MenuPrompt => Get();
         public static string MenuFkeys => Get();
         public static string MenuUnknownCommand => Get();
+
+        // --- Crear archivo físico (FilesView) ---
+        public static string FilesTitle => Get();
+        public static string FilesFile => Get();
+        public static string FilesLibrary => Get();
+        public static string FilesText => Get();
+        public static string FilesColField => Get();
+        public static string FilesColType => Get();
+        public static string FilesColLength => Get();
+        public static string FilesColDecimals => Get();
+        public static string FilesFkeys => Get();
+        public static string FilesHint => Get();
+        public static string FilesNeedName => Get();
+        public static string FilesNeedFields => Get();
+        public static string FilesCreating => Get();
+        public static string FilesCreated => Get();
+        public static string FilesEditTitle => Get();
+        public static string FilesEditFkeys => Get();
+        public static string FilesUpdated => Get();
+
+        // --- SQL interactivo (SqlView / STRSQL) ---
+        public static string SqlTitle => Get();
+        public static string SqlPrompt => Get();
+        public static string SqlFkeys => Get();
+        public static string SqlHint => Get();
+        public static string SqlRunning => Get();
+        public static string SqlNoRows => Get();
+        public static string SqlRowsOne => Get();
+        public static string SqlRowsMany => Get();
+        public static string SqlTruncated => Get();
+        public static string SqlUpdated => Get();
+
+        // --- Trabajar con archivos (FileListView / WRKF) ---
+        public static string FileListTitle => Get();
+        public static string FileListFkeys => Get();
+        public static string FileListColFields => Get();
+        public static string FileListColTable => Get();
+        public static string FileListRecordFormat => Get();
+        public static string FileListQuerying => Get();
+        public static string FileListNone => Get();
+        public static string FileListCountOne => Get();
+        public static string FileListCountMany => Get();
 
         // --- Cabecera 5250 (HomeForm) ---
         public static string HeaderSystem => Get();

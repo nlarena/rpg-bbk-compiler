@@ -27,6 +27,45 @@ namespace RuntimeVisor
         public string endedAt { get; set; }      // ISO-8601 UTC, o null
     }
 
+    /// <summary>Un campo del formato de registro de un archivo (al declarar / listar).</summary>
+    public class FileFieldDto
+    {
+        public string name { get; set; }
+        public string type { get; set; }     // CHAR | DECIMAL | INTEGER | DATE
+        public int length { get; set; }
+        public int decimals { get; set; }
+    }
+
+    /// <summary>Un archivo de base de datos (physical file), tal como lo expone <c>/api/files</c>.</summary>
+    public class FileDto
+    {
+        public string name { get; set; }
+        public string library { get; set; }
+        public string text { get; set; }
+        public string tableName { get; set; }
+        public string createdAt { get; set; }
+        public List<FileFieldDto> fields { get; set; }
+    }
+
+    /// <summary>Resultado de una sentencia SQL (STRSQL): result set (RESULT) o conteo (UPDATE).</summary>
+    public class SqlResultDto
+    {
+        public string kind { get; set; }              // RESULT | UPDATE
+        public List<string> columns { get; set; }
+        public List<List<string>> rows { get; set; }
+        public int? updateCount { get; set; }
+        public bool truncated { get; set; }
+    }
+
+    /// <summary>Cuerpo de error estándar de Spring Boot (con <c>server.error.include-message=always</c>).</summary>
+    public class ApiErrorBody
+    {
+        public int status { get; set; }
+        public string error { get; set; }
+        public string message { get; set; }
+        public string path { get; set; }
+    }
+
     /// <summary>El runtime rechazó la operación (sign-on fallido, sin autoridad, etc.).</summary>
     public class RuntimeApiException : Exception
     {
@@ -115,6 +154,119 @@ namespace RuntimeVisor
                     }
                     return _json.Deserialize<List<JobDto>>(body) ?? new List<JobDto>();
                 }
+            }
+        }
+
+        /// <summary>Lista los archivos declarados (GET /api/files), con sus campos.</summary>
+        public async Task<List<FileDto>> GetFilesAsync()
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Get, "api/files"))
+            {
+                if (!string.IsNullOrEmpty(RuntimeSession.Token))
+                {
+                    request.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", RuntimeSession.Token);
+                }
+                using (var response = await Http.SendAsync(request))
+                {
+                    string body = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new RuntimeApiException((int)response.StatusCode, ErrorMessage(body, (int)response.StatusCode));
+                    }
+                    return _json.Deserialize<List<FileDto>>(body) ?? new List<FileDto>();
+                }
+            }
+        }
+
+        /// <summary>Declara un archivo de base de datos (POST /api/files); crea la tabla física real.</summary>
+        public async Task<FileDto> DeclareFileAsync(object request)
+        {
+            string payload = _json.Serialize(request);
+            using (var req = new HttpRequestMessage(HttpMethod.Post, "api/files"))
+            {
+                if (!string.IsNullOrEmpty(RuntimeSession.Token))
+                {
+                    req.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", RuntimeSession.Token);
+                }
+                req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using (var response = await Http.SendAsync(req))
+                {
+                    string body = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new RuntimeApiException((int)response.StatusCode, ErrorMessage(body, (int)response.StatusCode));
+                    }
+                    return _json.Deserialize<FileDto>(body);
+                }
+            }
+        }
+
+        /// <summary>Modifica el formato de registro de un archivo (PUT /api/files/{library}/{name}); aplica ALTER TABLE.</summary>
+        public async Task<FileDto> ModifyFileAsync(string library, string name, object request)
+        {
+            string url = "api/files/" + Uri.EscapeDataString(library) + "/" + Uri.EscapeDataString(name);
+            string payload = _json.Serialize(request);
+            using (var req = new HttpRequestMessage(HttpMethod.Put, url))
+            {
+                if (!string.IsNullOrEmpty(RuntimeSession.Token))
+                {
+                    req.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", RuntimeSession.Token);
+                }
+                req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using (var response = await Http.SendAsync(req))
+                {
+                    string body = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new RuntimeApiException((int)response.StatusCode, ErrorMessage(body, (int)response.StatusCode));
+                    }
+                    return _json.Deserialize<FileDto>(body);
+                }
+            }
+        }
+
+        /// <summary>Ejecuta una sentencia SQL (POST /api/sql) y devuelve el resultado.</summary>
+        public async Task<SqlResultDto> RunSqlAsync(string sql)
+        {
+            string payload = _json.Serialize(new { sql = sql });
+            using (var req = new HttpRequestMessage(HttpMethod.Post, "api/sql"))
+            {
+                if (!string.IsNullOrEmpty(RuntimeSession.Token))
+                {
+                    req.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", RuntimeSession.Token);
+                }
+                req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using (var response = await Http.SendAsync(req))
+                {
+                    string body = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new RuntimeApiException((int)response.StatusCode, ErrorMessage(body, (int)response.StatusCode));
+                    }
+                    return _json.Deserialize<SqlResultDto>(body);
+                }
+            }
+        }
+
+        /// <summary>Saca el motivo real del cuerpo de error del runtime; si no hay, cae a un mensaje por status.</summary>
+        private string ErrorMessage(string body, int statusCode)
+        {
+            try
+            {
+                ApiErrorBody err = _json.Deserialize<ApiErrorBody>(body);
+                if (err != null && !string.IsNullOrWhiteSpace(err.message)) return err.message;
+            }
+            catch { /* cuerpo no-JSON: caemos al genérico */ }
+
+            switch (statusCode)
+            {
+                case 401: return Strings.ErrSessionExpired;
+                case 403: return "Sin autoridad *ALLOBJ para crear archivos.";
+                default: return "El runtime rechazó la operación (HTTP " + statusCode + ").";
             }
         }
     }

@@ -50,7 +50,7 @@ story = []
 
 # ===================== PORTADA / HEADER =====================
 story.append(Paragraph("BoxBreaker — Informe de estado", H_TITLE))
-story.append(Paragraph("Proyecto rpg-bbk-compiler &nbsp;|&nbsp; Estado de tareas por m&oacute;dulo &nbsp;|&nbsp; 14 de junio de 2026", H_SUB))
+story.append(Paragraph("Proyecto rpg-bbk-compiler &nbsp;|&nbsp; Estado de tareas por m&oacute;dulo &nbsp;|&nbsp; 20 de junio de 2026", H_SUB))
 story.append(HRFlowable(width="100%", thickness=2, color=ACCENT, spaceBefore=6, spaceAfter=10))
 
 # ===================== RESUMEN EJECUTIVO =====================
@@ -62,28 +62,34 @@ story.append(Paragraph(
     "<b>debugger</b> que muestra la traducci&oacute;n l&iacute;nea a l&iacute;nea. El <b>n&uacute;cleo</b> "
     "(bbk-core, Java in-JVM) ya <b>compila y ejecuta BBK en la JVM</b> (lexer + AST + parser + backend a bytecode "
     "con ASM) y <b>ambos backends (JVM y C) cubren todo el lenguaje no-SO</b>: procedimientos, decimales, arrays, "
-    "estructuras, subrutinas, monitor y builtins. El <b>runtime</b> (bbk-runtime) qued&oacute; <b>inicializado</b> "
-    "como m&oacute;dulo Spring Boot (scaffold de Spring Initializr, servicio REST); falta construir la superficie "
-    "de IBM i (jobs, datos, spool, program calls) sobre esa base.", BODY))
+    "estructuras, subrutinas, monitor y builtins. El <b>runtime</b> (bbk-runtime) dej&oacute; de ser un scaffold: "
+    "ya <b>persiste jobs</b> con ciclo de vida real (un trabajo arranca, corre en su hilo y termina), tiene "
+    "<b>login JWT + autoridades especiales estilo IBM i</b> y expone una <b>API REST</b> (sign-on, usuarios y "
+    "jobs &mdash; listado WRKACTJOB-style + env&iacute;o de trabajo) sobre MySQL/JPA con logging a archivo. Encima "
+    "se construy&oacute; un <b>visor .NET (RuntimeVisor)</b> estilo pantalla verde 5250 que consume esa API "
+    "(sign-on &rarr; men&uacute; &rarr; trabajos activos), con <b>i18n ES/EN</b>. Es justo la pieza que no existe "
+    "en open source y la base sobre la que crecer&iacute;a una versi&oacute;n profesional.", BODY))
 
 # Tarjetas de resumen
 summary_data = [[
     Paragraph('<b>plugin-bbk</b><br/><font size=8 color="#1f8a4c">COMPLETO</font><br/><font size=7 color="#5b6472">12/12 features &middot; 80 tests</font>', CELL),
     Paragraph('<b>rpg-frontend + debugger</b><br/><font size=8 color="#1f8a4c">TRADUCE + VALIDADO</font><br/><font size=7 color="#5b6472">free-form &middot; 63 tests</font>', CELL),
-    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#1f8a4c">EJECUTA BBK (2 backends)</font><br/><font size=7 color="#5b6472">bytecode+C &middot; sem&aacute;ntica compartida &middot; 97 tests</font>', CELL),
-    Paragraph('<b>bbk-runtime</b><br/><font size=8 color="#b9770e">INICIADO</font><br/><font size=7 color="#5b6472">scaffold Spring Boot &middot; 1 test</font>', CELL),
+    Paragraph('<b>bbk-core (n&uacute;cleo)</b><br/><font size=8 color="#1f8a4c">EJECUTA BBK (2 backends)</font><br/><font size=7 color="#5b6472">bytecode+C &middot; 97 tests</font>', CELL),
+    Paragraph('<b>bbk-runtime</b><br/><font size=8 color="#1f8a4c">JOBS + AUTH + API</font><br/><font size=7 color="#5b6472">JWT &middot; MySQL &middot; 3 tests</font>', CELL),
+    Paragraph('<b>RuntimeVisor (.NET)</b><br/><font size=8 color="#1f8a4c">VISOR 5250</font><br/><font size=7 color="#5b6472">WRKACTJOB &middot; i18n ES/EN</font>', CELL),
 ]]
-st = Table(summary_data, colWidths=[43.5*mm, 43.5*mm, 43.5*mm, 43.5*mm])
+st = Table(summary_data, colWidths=[34*mm, 34*mm, 34*mm, 34*mm, 34*mm])
 st.setStyle(TableStyle([
     ("BACKGROUND", (0,0), (0,0), GREEN_BG),
     ("BACKGROUND", (1,0), (1,0), GREEN_BG),
     ("BACKGROUND", (2,0), (2,0), GREEN_BG),
-    ("BACKGROUND", (3,0), (3,0), AMBER_BG),
+    ("BACKGROUND", (3,0), (3,0), GREEN_BG),
+    ("BACKGROUND", (4,0), (4,0), GREEN_BG),
     ("BOX", (0,0), (-1,-1), 0.5, LINE),
     ("INNERGRID", (0,0), (-1,-1), 0.5, colors.white),
     ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ("LEFTPADDING", (0,0), (-1,-1), 8),
-    ("RIGHTPADDING", (0,0), (-1,-1), 8),
+    ("LEFTPADDING", (0,0), (-1,-1), 6),
+    ("RIGHTPADDING", (0,0), (-1,-1), 6),
     ("TOPPADDING", (0,0), (-1,-1), 8),
     ("BOTTOMPADDING", (0,0), (-1,-1), 8),
 ]))
@@ -241,31 +247,67 @@ story.append(Paragraph(
     "dos bugs de MinGW + long double (stdio ANSI para <font face='Courier'>%Lf</font>; snap del truncado decimal). "
     "Decisiones abiertas: BigDecimal (JVM) / long double (C) vs BCD propio exacto; arrays 0-based.", BODY))
 
-story.append(Paragraph("4 &nbsp; Runtime (bbk-runtime) &mdash; <font color='#b9770e'>inicializado (scaffold Spring Boot)</font>", H1))
+story.append(Paragraph("4 &nbsp; Runtime (bbk-runtime) &mdash; <font color='#1f8a4c'>jobs + auth + API REST</font>", H1))
 story.append(Paragraph(
-    "Decisi&oacute;n (2026-06-14): el runtime es un <b>servicio Spring Boot standalone invocado por REST/HTTP</b> "
-    "(elegido sobre Rust). Va a manejar la superficie <i>gruesa</i> de IBM i (jobs, datos, spool, program calls); la "
-    "aritm&eacute;tica BCD/strings <b>no</b> cruza la red &mdash; queda local en bbk-core / el c&oacute;digo generado "
-    "(decisi&oacute;n #4 intacta). Por ahora el m&oacute;dulo est&aacute; <b>solo inicializado</b> con el scaffold de "
-    "Spring Initializr.", BODY))
+    "Servicio <b>Spring Boot standalone invocado por REST/HTTP</b> (elegido sobre Rust). Maneja la superficie "
+    "<i>gruesa</i> de IBM i; la aritm&eacute;tica BCD/strings <b>no</b> cruza la red &mdash; queda local en bbk-core / "
+    "el c&oacute;digo generado (decisi&oacute;n #4 intacta). Ya dej&oacute; de ser scaffold: <b>persiste jobs con "
+    "ciclo de vida real</b>, tiene <b>login JWT con autoridades especiales</b> estilo IBM i y una <b>API REST</b> "
+    "operativa sobre MySQL/JPA.", BODY))
 runtime = [
-    ("M&oacute;dulo Spring Boot inicializado", "done",
-     "Scaffold de Spring Initializr (Spring Boot 3.5.5, Gradle Kotlin DSL, Java 21). Booteable; compila sobre "
-     "Gradle 9.5 + JDK 25 (release 21). Test <font face='Courier'>contextLoads</font>"),
-    ("Jobs / sesiones", "todo", "Contexto de ejecuci&oacute;n por-job: usuario, estado, library list"),
-    ("Library list (*LIBL)", "todo", "Path de b&uacute;squeda de objetos por job"),
-    ("Acceso a datos / registros (DDS)", "todo", "Capa record-level. Falta elegir el almac&eacute;n (SQLite / H2 / Postgres)"),
+    ("Base Spring Boot", "done",
+     "Spring Boot 3.5.5, Gradle Kotlin DSL, Java 21 (release 21 sobre JDK 25). Persistencia <b>MySQL + JPA/Hibernate</b> "
+     "(ddl-auto update) y <b>logging a archivo</b> (Logback con rolling)"),
+    ("Jobs persistidos + ciclo de vida", "done",
+     "Entidad <font face='Courier'>Job</font> (n&uacute;mero estilo IBM i, estado ACTIVE/ENDED) con historial de "
+     "<b>eventos</b> (audit BPMS-style) y <b>atributos EAV</b>. Un trabajo <b>arranca, corre en su propio hilo y "
+     "termina</b> (JobRunner sincr&oacute;nico y as&iacute;ncrono)"),
+    ("Library list (*LIBL)", "done", "<font face='Courier'>JobLibrary</font> ordenada: path de b&uacute;squeda de objetos por job"),
+    ("Login JWT + autoridades especiales", "done",
+     "<font face='Courier'>UserProfile</font> con hash BCrypt y <b>special authorities</b> (*ALLOBJ, *SECADM, *JOBCTL...). "
+     "Sign-on emite JWT (jjwt); Spring Security stateless; perfil semilla <font face='Courier'>QSECOFR</font>"),
+    ("API REST", "done",
+     "<font face='Courier'>/api/auth</font> (login + me), <font face='Courier'>/api/users</font> (alta/listado, exige "
+     "*SECADM) y <font face='Courier'>/api/jobs</font>: listado <b>WRKACTJOB-style</b> + <b>POST</b> de un trabajo que "
+     "espera (exige *JOBCTL). Autorizaci&oacute;n por endpoint (401/403)"),
+    ("Acceso a datos / registros (DDS)", "todo", "Capa record-level sobre las tablas de negocio"),
     ("Program calls (CALL a *PGM)", "todo", "Invocaci&oacute;n de otros programas dentro de un job"),
-    ("Activation groups", "todo", "Grupos de activaci&oacute;n"),
-    ("Spool files", "todo", "Archivos de spool"),
+    ("Activation groups / Spool files", "todo", "Grupos de activaci&oacute;n y archivos de spool"),
     ("Lado cliente (bytecode / C-AOT &rarr; runtime)", "todo", "Que el c&oacute;digo generado arranque un job y llame al runtime por HTTP"),
 ]
 story.append(status_table(runtime, "Tarea"))
 story.append(Paragraph(
-    "<b>1 test</b> en bbk-runtime (<font face='Courier'>contextLoads</font>): el contexto Spring arranca limpio. "
-    "La superficie de IBM i se construye sobre esta base.", BODY))
+    "<b>3 tests</b> en bbk-runtime sobre <b>MySQL real</b>: ciclo de vida de jobs, sign-on/JWT y "
+    "<font face='Courier'>contextLoads</font>. Verificado end-to-end: login <font face='Courier'>QSECOFR</font> &rarr; "
+    "<font face='Courier'>GET /api/jobs</font> &rarr; grid del visor; un trabajo <font face='Courier'>BBKWAIT</font> "
+    "enviado por <font face='Courier'>POST</font> aparece <b>ACTIVE</b> y pasa solo a <b>ENDED</b> al terminar su espera.", BODY))
 
-story.append(Paragraph("5 &nbsp; Otros m&oacute;dulos &mdash; sin empezar", H1))
+# ===================== RuntimeVisor (.NET) =====================
+story.append(Paragraph("5 &nbsp; RuntimeVisor &mdash; <font color='#1f8a4c'>visor .NET (pantalla verde 5250)</font>", H1))
+story.append(Paragraph(
+    "Cliente de escritorio <b>.NET WinForms (.NET Framework 4.8)</b> que consume la API del runtime con est&eacute;tica "
+    "de terminal <b>5250</b> (verde sobre negro, Consolas). Practica .NET y, a la vez, le pone cara al runtime. "
+    "Flujo: <i>sign-on &rarr; Home (cabecera 5250) &rarr; trabajos activos</i>, navegaci&oacute;n h&iacute;brida "
+    "(comando <font face='Courier'>WRKACTJOB</font> / opci&oacute;n num&eacute;rica + teclas de funci&oacute;n).", BODY))
+visor = [
+    ("Sign-on contra el runtime", "done", "Login JWT (usuario/contrase&ntilde;a &rarr; token guardado en la sesi&oacute;n); mensajes de error claros"),
+    ("Home estilo 5250", "done", "Cabecera Sistema/Subsistema/Terminal/Usuario/Fecha/Hora con reloj en vivo; se <b>colapsa</b> al navegar"),
+    ("WRKACTJOB (trabajos activos)", "done",
+     "Grilla que consulta <font face='Courier'>GET /api/jobs</font> y muestra n&uacute;mero/usuario/nombre/estado/creado/"
+     "terminado. <b>F5</b> refresca, <b>F3</b> vuelve"),
+    ("Internacionalizaci&oacute;n (i18n)", "done",
+     "<font face='Courier'>.resx</font> + ResourceManager: espa&ntilde;ol (base) e ingl&eacute;s (sat&eacute;lite). "
+     "Idioma por cultura del SO u override <font face='Courier'>--lang=en</font> / <font face='Courier'>BBK_LANG</font>"),
+    ("Enviar trabajo desde el visor", "todo", "Un F6 que haga el POST y refresque, para lanzar y ver un job activo sin salir"),
+    ("Vistas adicionales (usuarios, etc.)", "todo", "Reusar la navegaci&oacute;n para m&aacute;s superficies del runtime"),
+]
+story.append(status_table(visor, "Tarea"))
+story.append(Paragraph(
+    "Compila con MSBuild de Visual Studio. Pendiente de higiene: quitar las credenciales precargadas "
+    "(<font face='Courier'>QSECOFR/qsecofr</font>) y agregar <font face='Courier'>.gitignore</font> para los "
+    "artefactos .NET (.vs/, obj/, bin/).", BODY))
+
+story.append(Paragraph("6 &nbsp; Otros m&oacute;dulos &mdash; sin empezar", H1))
 others = [
     ("plugin-rpg: highlighting", "todo", "Resaltado de sintaxis RPG en IntelliJ"),
     ("plugin-rpg: editor parser", "todo", "Errores inline en RPG"),
@@ -278,12 +320,13 @@ others = [
 story.append(status_table(others, "Tarea"))
 
 # ===================== Higiene pendiente =====================
-story.append(Paragraph("6 &nbsp; Deuda t&eacute;cnica / higiene pendiente", H1))
+story.append(Paragraph("7 &nbsp; Deuda t&eacute;cnica / higiene pendiente", H1))
 hygiene = [
+    ("Credenciales precargadas en el visor", "todo", "Form1 trae QSECOFR/qsecofr hardcodeado para no tipear; quitar antes de uso real (ver TODO.md del visor)"),
+    ("<font face='Courier'>.gitignore</font> para el m&oacute;dulo .NET", "todo", "Se cuelan como untracked .vs/, obj/, bin/, *.suo, *.vsidx"),
+    ("Secreto JWT y datasource de dev", "todo", "<font face='Courier'>application.properties</font> tiene secreto JWT y root/root de MySQL en claro (solo dev)"),
     ("Quitar logs de diagn&oacute;stico", "todo", "BBK-REF / BBK-RESOLVE / BBK-SCOPE quedaron del debug de cross-file"),
-    ("Actualizar TODO.md", "todo", "Desactualizado: lista autocomplete como pendiente cuando ya est&aacute; hecho"),
     ("Unificar cat&aacute;logo de builtins", "todo", "BbkBifProvider tiene lista hardcodeada en paralelo al nuevo registry"),
-    ("Verificaci&oacute;n manual en GUI", "todo", "Smart completion / inspections / Ctrl+P / Ctrl+Q a&uacute;n sin probar a mano end-to-end"),
     ("Inspections V1.5 + quick-fixes", "todo", "Unused / Shadowed / ReservedWord / LikeCycle + fixes (diferidas)"),
 ]
 story.append(status_table(hygiene, "Tarea"))
