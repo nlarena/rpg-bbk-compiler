@@ -166,6 +166,12 @@
         <runConfigurationProducer
             implementation="com.larena.boxbreaker.plugin.bbk.run.BbkRunConfigurationProducer"/>
 
+        <!-- Debug BBK (Fase C1): breakpoints + variables + resume con el XDebugger. -->
+        <xdebugger.breakpointType
+            implementation="com.larena.boxbreaker.plugin.bbk.debug.BbkLineBreakpointType"/>
+        <programRunner
+            implementation="com.larena.boxbreaker.plugin.bbk.debug.BbkDebugRunner"/>
+
         <!-- Block A: live templates. -->
         <defaultLiveTemplates file="/liveTemplates/Bbk.xml"/>
         <liveTemplateContext

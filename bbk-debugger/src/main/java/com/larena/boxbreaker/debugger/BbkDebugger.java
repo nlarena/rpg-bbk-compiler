@@ -1,35 +1,38 @@
 package com.larena.boxbreaker.debugger;
 
+import com.larena.boxbreaker.core.ast.BbkItem;
+import com.larena.boxbreaker.core.ast.BbkProgram;
 import com.larena.boxbreaker.core.parser.BbkParser;
 import com.larena.boxbreaker.core.parser.ParsedProgram;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 /**
- * Fachada del debugger de BBK. Parsea el fuente con el parser de bbk-core y lo
- * <b>interpreta</b> (tercer modo de ejecución, además de los dos backends),
- * emitiendo un paso por cada sentencia.
+ * Fachada del debugger de BBK. Parsea el/los fuente(s) con el parser de bbk-core
+ * y los <b>interpreta</b>, emitiendo un paso por cada sentencia.
  *
- * <pre>
- *   DebugResult r = BbkDebugger.trace(source);          // corre entero, junta los pasos
- *   BbkDebugger.run(source, step -> { ...; return CONTINUE; });  // streaming (el IDE controla)
- * </pre>
+ * <p>Soporta varios archivos: {@link #runFiles} combina sus items en un solo
+ * programa (con posiciones por archivo), así un programa con declaraciones
+ * cruzadas entre archivos corre como uno solo.
  */
 public final class BbkDebugger {
 
     private BbkDebugger() {}
 
-    /** Corre el programa hasta el final y devuelve todos los pasos + la salida. */
+    /** Corre un único fuente hasta el final y devuelve todos los pasos + la salida. */
     public static DebugResult trace(String source) {
         return run(source, null);
     }
 
-    /**
-     * Corre el programa notificando cada paso al {@code listener} (que puede pedir
-     * parar). Igual junta todos los pasos en el {@link DebugResult}.
-     */
+    /** Corre un único fuente notificando cada paso al {@code listener}. */
     public static DebugResult run(String source, DebugListener listener) {
+        return runFiles(List.of(new NamedSource("", source)), listener);
+    }
+
+    /** Corre un programa multi-archivo: combina todos los fuentes y los interpreta. */
+    public static DebugResult runFiles(List<NamedSource> sources, DebugListener listener) {
         List<TraceStep> collected = new ArrayList<>();
         DebugListener sink = step -> {
             collected.add(step);
@@ -38,9 +41,21 @@ public final class BbkDebugger {
 
         Interpreter interp = null;
         try {
-            ParsedProgram parsed = BbkParser.parseWithPositions(source);
-            interp = new Interpreter(sink, parsed.positions());
-            interp.run(parsed.program());
+            List<BbkItem> items = new ArrayList<>();
+            IdentityHashMap<BbkItem, String> files = new IdentityHashMap<>();
+            IdentityHashMap<BbkItem, Integer> lines = new IdentityHashMap<>();
+
+            for (NamedSource ns : sources) {
+                ParsedProgram parsed = BbkParser.parseWithPositions(ns.text());
+                items.addAll(parsed.program().items());
+                for (BbkItem item : parsed.positions().items()) {
+                    files.put(item, ns.name());
+                    lines.put(item, parsed.positions().lineOf(item));
+                }
+            }
+
+            interp = new Interpreter(sink, new Locations(files, lines));
+            interp.run(new BbkProgram(items));
             return new DebugResult(collected, interp.output(), null);
         } catch (Interpreter.Stopped stopped) {
             return new DebugResult(collected, output(interp), null);   // parado por el listener

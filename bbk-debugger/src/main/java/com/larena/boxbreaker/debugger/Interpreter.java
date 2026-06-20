@@ -1,7 +1,6 @@
 package com.larena.boxbreaker.debugger;
 
 import com.larena.boxbreaker.core.ast.*;
-import com.larena.boxbreaker.core.parser.SourceMap;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,21 +38,22 @@ final class Interpreter {
         ReturnSignal(Object value) { super(null, null, false, false); this.value = value; }
     }
 
-    private enum Cat { LONG, DOUBLE, DECIMAL, BOOL, STRING }
+    private enum Cat { LONG, DOUBLE, DECIMAL, BOOL, STRING, DS }
 
     private final DebugListener listener;
-    private final SourceMap positions;
+    private final Locations locations;
     private final StringBuilder out = new StringBuilder();
     private final Map<String, Object> globals = new LinkedHashMap<>();
     private final Deque<Map<String, Object>> frames = new ArrayDeque<>();
     private final Map<String, BbkDeclaration.Procedure> procedures = new LinkedHashMap<>();
     private final Map<String, List<BbkItem>> subroutines = new LinkedHashMap<>();
+    private final Map<String, BbkDeclaration.DataStructure> dsShapes = new LinkedHashMap<>();
     private int step = 0;
     private int depth = 0;
 
-    Interpreter(DebugListener listener, SourceMap positions) {
+    Interpreter(DebugListener listener, Locations locations) {
         this.listener = listener;
-        this.positions = positions;
+        this.locations = locations;
     }
 
     String output() {
@@ -86,6 +86,7 @@ final class Interpreter {
         for (BbkItem item : items) {
             if (item instanceof BbkDeclaration.Procedure p) procedures.put(p.name(), p);
             else if (item instanceof BbkStatement.Subroutine s) subroutines.put(s.name(), s.body());
+            else if (item instanceof BbkDeclaration.DataStructure ds) dsShapes.put(ds.name(), ds);
         }
     }
 
@@ -134,10 +135,12 @@ final class Interpreter {
             case BbkDeclaration.Constant c -> define(c.name(), eval(c.value()));
             case BbkDeclaration.CtlOpt ignored -> { /* MAIN ya resuelto */ }
             case BbkDeclaration.Prototype ignored -> { /* sin efecto en runtime */ }
+            case BbkDeclaration.DataStructure ds -> {
+                dsShapes.put(ds.name(), ds);
+                if (!isTemplate(ds)) define(ds.name(), instantiateDs(ds));   // DS con storage
+            }
             case BbkDeclaration.File ignored ->
                 throw new DebugException("DCL-F / acceso a archivo no está soportado en el debugger v1");
-            case BbkDeclaration.DataStructure ignored ->
-                throw new DebugException("estructuras (DCL-DS) no soportadas en el debugger v1");
             default -> throw new DebugException("declaración no soportada en el debugger v1");
         }
     }
@@ -242,12 +245,30 @@ final class Interpreter {
     }
 
     private void assignStatement(BbkStatement.Assignment a) {
+        if (a.target() instanceof BbkExpr.Member m) {
+            assignMember(m, a);
+            return;
+        }
         String name = targetName(a.target());
         Object rhs = eval(a.value());
         Object result = (a.op() == BbkStatement.AssignOp.ASSIGN)
             ? rhs
             : binary(lookup(name), compoundOp(a.op()), rhs);
         assign(name, result);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assignMember(BbkExpr.Member m, BbkStatement.Assignment a) {
+        Object target = eval(m.target());
+        if (!(target instanceof Map)) {
+            throw new DebugException("asignación a campo '." + m.field() + "' sobre un valor que no es estructura");
+        }
+        Map<String, Object> ds = (Map<String, Object>) target;
+        Object rhs = eval(a.value());
+        Object result = (a.op() == BbkStatement.AssignOp.ASSIGN)
+            ? rhs
+            : binary(ds.get(m.field()), compoundOp(a.op()), rhs);
+        ds.put(m.field(), result);
     }
 
     private Object callProcedure(BbkDeclaration.Procedure p, List<Object> args) {
@@ -286,8 +307,17 @@ final class Interpreter {
             case BbkExpr.Ternary t -> truthy(eval(t.condition())) ? eval(t.then()) : eval(t.otherwise());
             case BbkExpr.Call c -> evalCall(c);
             case BbkExpr.Index ignored -> throw new DebugException("arrays no soportados en el debugger v1");
-            case BbkExpr.Member ignored -> throw new DebugException("acceso a campos (.) no soportado en el debugger v1");
+            case BbkExpr.Member m -> readMember(m);
         };
+    }
+
+    private Object readMember(BbkExpr.Member m) {
+        Object target = eval(m.target());
+        if (target instanceof Map<?, ?> ds) {
+            if (!ds.containsKey(m.field())) throw new DebugException("campo inexistente: " + m.field());
+            return ds.get(m.field());
+        }
+        throw new DebugException("acceso a campo '." + m.field() + "' sobre un valor que no es estructura");
     }
 
     private Object evalBinary(BbkExpr.Binary b) {
@@ -491,9 +521,18 @@ final class Interpreter {
             case HEX -> Long.parseLong(stripPrefix(t, "0x", "0X"), 16);
             case OCT -> Long.parseLong(stripPrefix(t, "0o", "0O"), 8);
             case FLOAT -> Double.parseDouble(t);
-            case DEC -> new BigDecimal(t);
+            case DEC -> new BigDecimal(stripDecSuffix(t));
             case STRING -> unquote(t);
         };
+    }
+
+    /** Los literales decimales de BBK llevan sufijo 'd' (199.95d); BigDecimal no lo acepta. */
+    private static String stripDecSuffix(String t) {
+        if (!t.isEmpty()) {
+            char last = t.charAt(t.length() - 1);
+            if (last == 'd' || last == 'D') return t.substring(0, t.length() - 1);
+        }
+        return t;
     }
 
     private static String stripPrefix(String t, String p1, String p2) {
@@ -552,10 +591,14 @@ final class Interpreter {
                 case "PACKED", "ZONED", "BINDEC" -> Cat.DECIMAL;
                 case "BOOL", "IND" -> Cat.BOOL;
                 case "CHAR", "VARCHAR" -> Cat.STRING;
+                case "DATE", "TIME", "TIMESTAMP" -> Cat.STRING;   // simplificado: fecha/hora como texto
                 default -> throw new DebugException("tipo no soportado en el debugger v1: " + p.name());
             };
         }
-        throw new DebugException("tipos LIKE/LIKEDS no soportados en el debugger v1");
+        if (type instanceof BbkType.Like like && like.kind() == BbkType.LikeKind.LIKEDS) {
+            return Cat.DS;
+        }
+        throw new DebugException("tipos LIKE/LIKEREC no soportados en el debugger v1");
     }
 
     private Object defaultValue(BbkType type) {
@@ -565,6 +608,7 @@ final class Interpreter {
             case DECIMAL -> BigDecimal.ZERO;
             case BOOL -> Boolean.FALSE;
             case STRING -> "";
+            case DS -> instantiateDs(dsName(type));
         };
     }
 
@@ -575,7 +619,47 @@ final class Interpreter {
             case DECIMAL -> toBigDecimal(v);
             case BOOL -> truthy(v);
             case STRING -> asText(v);
+            case DS -> copyDs(v);
         };
+    }
+
+    // ----- estructuras de datos (DS) -----
+
+    private static boolean isTemplate(BbkDeclaration.DataStructure ds) {
+        for (BbkModifier m : ds.modifiers()) {
+            if (m.name().equalsIgnoreCase("TEMPLATE")) return true;
+        }
+        return false;
+    }
+
+    private static String dsName(BbkType type) {
+        if (type instanceof BbkType.Like like) return like.name();
+        throw new DebugException("se esperaba un tipo LIKEDS");
+    }
+
+    private Object instantiateDs(String name) {
+        BbkDeclaration.DataStructure ds = dsShapes.get(name);
+        if (ds == null) throw new DebugException("estructura no declarada: " + name);
+        return instantiateDs(ds);
+    }
+
+    private Object instantiateDs(BbkDeclaration.DataStructure ds) {
+        Map<String, Object> instance = new LinkedHashMap<>();
+        for (BbkDeclaration.Subfield sub : ds.subfields()) {
+            BbkExpr inz = inz(sub.modifiers());
+            Object val = inz != null ? coerce(eval(inz), category(sub.type())) : defaultValue(sub.type());
+            instance.put(sub.name(), val);
+        }
+        return instance;
+    }
+
+    private static Object copyDs(Object v) {
+        if (v instanceof Map<?, ?> m) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : m.entrySet()) copy.put(String.valueOf(e.getKey()), e.getValue());
+            return copy;
+        }
+        return v;
     }
 
     // =======================================================================
@@ -599,7 +683,8 @@ final class Interpreter {
     }
 
     private void emit(BbkItem item, String statement, String outputDelta) {
-        int line = positions == null ? 0 : positions.lineOf(item);
+        int line = locations == null ? 0 : locations.lineOf(item);
+        String file = locations == null ? "" : locations.fileOf(item);
 
         Map<String, Object> scope = new LinkedHashMap<>(globals);
         if (!frames.isEmpty()) scope.putAll(frames.peek());
@@ -607,7 +692,7 @@ final class Interpreter {
         Map<String, String> snapshot = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : scope.entrySet()) snapshot.put(e.getKey(), display(e.getValue()));
 
-        TraceStep ts = new TraceStep(++step, line, depth, statement, snapshot, outputDelta);
+        TraceStep ts = new TraceStep(++step, file, line, depth, statement, snapshot, outputDelta);
         if (listener.onStep(ts) == DebugListener.Decision.STOP) throw new Stopped();
     }
 

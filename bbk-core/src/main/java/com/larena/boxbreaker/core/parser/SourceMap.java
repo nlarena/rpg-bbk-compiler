@@ -4,6 +4,7 @@ import com.larena.boxbreaker.core.ast.BbkItem;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Posiciones de fuente de los items del AST, indexadas <b>por identidad</b> de
@@ -28,6 +29,11 @@ public final class SourceMap {
     public int lineOf(BbkItem item) {
         SourceSpan s = span(item);
         return s == null ? 0 : s.startLine();
+    }
+
+    /** Todos los items con posición registrada (top-level y anidados). */
+    public Set<BbkItem> items() {
+        return spans.keySet();
     }
 
     public boolean isEmpty() {

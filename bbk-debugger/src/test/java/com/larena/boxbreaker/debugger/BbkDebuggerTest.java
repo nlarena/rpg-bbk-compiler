@@ -56,9 +56,45 @@ public class BbkDebuggerTest {
     }
 
     @Test
+    public void crossFileWithDataStructures() {
+        NamedSource types = new NamedSource("types.bbk",
+            "DCL-DS point QUALIFIED {\n  x INT(10);\n  y INT(10);\n}\n");
+        NamedSource main = new NamedSource("main.bbk", """
+            CTL-OPT MAIN(run);
+            DCL-PROC sumPoint(p LIKEDS(point) CONST) -> INT(10) {
+              return p.x + p.y;
+            }
+            DCL-PROC run {
+              DCL-S a LIKEDS(point);
+              a.x = 3;
+              a.y = 4;
+              print(char(sumPoint(a)));
+            }
+            """);
+
+        DebugResult r = BbkDebugger.runFiles(java.util.List.of(types, main), null);
+
+        assertTrue("debería correr cross-file con DS: " + r.error(), r.ok());
+        assertEquals("7\n", r.output());   // la DS de types.bbk se usa desde main.bbk
+    }
+
+    @Test
+    public void decimalLiteralWithDSuffix() {
+        // Los literales decimales llevan sufijo 'd': 199.95d. No debe romper.
+        DebugResult r = BbkDebugger.trace("""
+            DCL-S total PACKED(11:2) INZ(0);
+            total = 199.95d + 0.05d;
+            print(char(total));
+            """);
+
+        assertTrue("debería parsear 199.95d: " + r.error(), r.ok());
+        assertEquals("200.00\n", r.output());
+    }
+
+    @Test
     public void unsupportedFeatureFailsGracefully() {
-        // Una estructura (DCL-DS) no está en v1: debe reportar el error capturado, sin reventar.
-        DebugResult r = BbkDebugger.trace("DCL-DS rec { a INT(10); }\n");
+        // Los arrays todavía no están: debe reportar el error capturado, sin reventar.
+        DebugResult r = BbkDebugger.trace("DCL-S a INT(10);\na = a[1];\n");
 
         assertFalse("debería reportar error en vez de crashear", r.ok());
         assertNotNull(r.error());

@@ -12,6 +12,7 @@ import java.util.Map;
  * parser — es lo que habilita mapear breakpoints / resaltar la línea actual.
  *
  * @param step      número de paso (1..n)
+ * @param file      archivo (path) de la sentencia; "" si se desconoce
  * @param line      línea de fuente (1-based) de la sentencia; 0 si se desconoce
  * @param depth     profundidad de anidamiento (0 = mainline; aumenta dentro de
  *                  procedimientos / subrutinas / bloques) — para indentar
@@ -19,7 +20,7 @@ import java.util.Map;
  * @param variables snapshot {nombre &rarr; valor} de las variables visibles
  * @param output    lo que este paso escribió por salida (puede ser "")
  */
-public record TraceStep(int step, int line, int depth, String statement,
+public record TraceStep(int step, String file, int line, int depth, String statement,
                         Map<String, String> variables, String output) {
     public TraceStep {
         variables = Map.copyOf(variables);
