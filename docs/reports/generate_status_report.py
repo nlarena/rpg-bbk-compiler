@@ -224,7 +224,10 @@ core = [
      "Paquete <font face='Courier'>semantic</font>: un solo analizador resuelve nombres + infiere el tipo de cada "
      "expresi&oacute;n (Type neutral) y junta diagn&oacute;sticos. Los dos backends consumen el SemanticModel "
      "(borrado el typeOf/lookup duplicado); solo conservan el storage f&iacute;sico. Unific&oacute; <font face='Courier'>**</font> a FLOAT"),
-    ("docs/bbk-spec.md", "todo", "Spec formal de BBK (hoy: BBK.bnf + gram&aacute;tica + ejemplos de facto)"),
+    ("docs/bbk-spec.md", "done",
+     "Spec formal: l&eacute;xico, sistema de tipos + torre num&eacute;rica, declaraciones, sentencias, "
+     "precedencia de operadores, builtins, valores especiales, lowering (qu&eacute; entra y qu&eacute; no) y EBNF. "
+     "Grounded en bbk-core"),
     ("Lenguaje de bbk-runtime", "done", "Spring Boot, servicio REST standalone (decidido sobre Rust)"),
 ]
 story.append(status_table(core, "Tarea"))

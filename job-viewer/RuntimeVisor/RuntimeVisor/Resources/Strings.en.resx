@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="LoginWindowTitle" xml:space="preserve"><value>BoxBreaker — Sign On</value></data>
+  <data name="LoginUser" xml:space="preserve"><value>User</value></data>
+  <data name="LoginPassword" xml:space="preserve"><value>Password</value></data>
+  <data name="LoginButton" xml:space="preserve"><value>Sign On</value></data>
+  <data name="LoginEnterCredentials" xml:space="preserve"><value>Enter username and password.</value></data>
+  <data name="LoginConnecting" xml:space="preserve"><value>Connecting to the runtime…</value></data>
+  <data name="LoginConnectError" xml:space="preserve"><value>Could not connect to the runtime: {0}</value></data>
+
+  <data name="MenuSelectOption" xml:space="preserve"><value>Select an option:</value></data>
+  <data name="MenuOption1" xml:space="preserve"><value>1.  Active jobs                       WRKACTJOB</value></data>
+  <data name="MenuPrompt" xml:space="preserve"><value>Option/Command ===&gt;</value></data>
+  <data name="MenuFkeys" xml:space="preserve"><value>F3=Exit</value></data>
+  <data name="MenuUnknownCommand" xml:space="preserve"><value>Option/command not recognized: {0}</value></data>
+
+  <data name="HeaderSystem" xml:space="preserve"><value>System . . . . :</value></data>
+  <data name="HeaderSubsystem" xml:space="preserve"><value>Subsystem  . . :</value></data>
+  <data name="HeaderTerminal" xml:space="preserve"><value>Terminal . . . :</value></data>
+  <data name="HeaderUser" xml:space="preserve"><value>User . . . . . :</value></data>
+  <data name="HeaderDate" xml:space="preserve"><value>Date . . . . . :</value></data>
+  <data name="HeaderTime" xml:space="preserve"><value>Time . . . . . :</value></data>
+  <data name="HeaderSystemShort" xml:space="preserve"><value>System</value></data>
+  <data name="HeaderSubsystemShort" xml:space="preserve"><value>Subsystem</value></data>
+  <data name="HeaderUserShort" xml:space="preserve"><value>User</value></data>
+  <data name="HeaderTerminalShort" xml:space="preserve"><value>Terminal</value></data>
+
+  <data name="JobsTitle" xml:space="preserve"><value>Active jobs                               WRKACTJOB</value></data>
+  <data name="JobsFkeys" xml:space="preserve"><value>F3=Back    F5=Refresh</value></data>
+  <data name="JobsColNumber" xml:space="preserve"><value>Number</value></data>
+  <data name="JobsColUser" xml:space="preserve"><value>User</value></data>
+  <data name="JobsColName" xml:space="preserve"><value>Name</value></data>
+  <data name="JobsColStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="JobsColCreated" xml:space="preserve"><value>Created</value></data>
+  <data name="JobsColEnded" xml:space="preserve"><value>Ended</value></data>
+  <data name="JobsQuerying" xml:space="preserve"><value>Querying jobs…</value></data>
+  <data name="JobsNone" xml:space="preserve"><value>No jobs registered.</value></data>
+  <data name="JobsCountOne" xml:space="preserve"><value>{0} job.</value></data>
+  <data name="JobsCountMany" xml:space="preserve"><value>{0} jobs.</value></data>
+  <data name="JobsConnectError" xml:space="preserve"><value>Could not connect to the runtime (localhost:8080).</value></data>
+
+  <data name="ErrInvalidCredentials" xml:space="preserve"><value>Invalid username or password.</value></data>
+  <data name="ErrLoginRejected" xml:space="preserve"><value>The runtime rejected the sign-on (HTTP {0}).</value></data>
+  <data name="ErrSessionExpired" xml:space="preserve"><value>Session expired. Sign on again.</value></data>
+  <data name="ErrNoJobAuthority" xml:space="preserve"><value>Missing *JOBCTL authority to view jobs.</value></data>
+  <data name="ErrQueryRejected" xml:space="preserve"><value>The runtime rejected the request (HTTP {0}).</value></data>
+</root>

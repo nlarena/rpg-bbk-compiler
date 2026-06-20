@@ -98,7 +98,7 @@ Pending. The user wanted more time to think about it. Options evaluated:
 - `bbk` — minimalist, pure brand
 - `rpg-to-native` — action-centric
 
-Final URL will be: `github.com/NicLarUniversidad/<repo-name>`
+Final URL will be: `github.com/nlarena/<repo-name>`
 
 ---
 
@@ -172,7 +172,7 @@ It must be scannable in 30 seconds. Suggested structure:
 
 > Compile IBM i RPG programs to native Windows binaries via a custom IR (BBK) and gcc.
 
-[![Build](https://img.shields.io/github/actions/workflow/status/NicLarUniversidad/<repo>/ci.yml)]()
+[![Build](https://img.shields.io/github/actions/workflow/status/nlarena/<repo>/ci.yml)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
 
 ## Pipeline
@@ -311,11 +311,11 @@ git add .
 git commit -m "Initial code drop: compiler, runtime, intellij plugin"
 
 # 6. Create public repo on GitHub
-gh repo create NicLarUniversidad/<repo-name> --public \
+gh repo create nlarena/<repo-name> --public \
   --description "RPG to native compiler via BBK IR for Windows"
 
 # 7. Link remote and push
-git remote add origin git@github.com:NicLarUniversidad/<repo-name>.git
+git remote add origin git@github.com:nlarena/<repo-name>.git
 git push -u origin main
 ```
 
@@ -345,7 +345,7 @@ Recommended order (one thing per session):
 
 ```
 ### <project name> — RPG-to-Windows Compiler with Custom IR · 2026 – Present
-github.com/NicLarUniversidad/<repo-name>
+github.com/nlarena/<repo-name>
 
 A compilation toolchain for RPG (IBM i / AS/400) to native binaries on Windows,
 designed to accelerate the local development and testing cycle in legacy
@@ -367,7 +367,7 @@ GitHub Actions, gcc.
 
 ```
 ### <project-name> — RPG-to-Windows Compiler with Custom IR · 2026 – Present
-github.com/NicLarUniversidad/<repo-name>
+github.com/nlarena/<repo-name>
 
 Cross-platform compilation toolchain for IBM i RPG programs, designed to
 accelerate the local development and testing cycle in legacy modernization

@@ -1,0 +1,13 @@
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\bin\Debug\RuntimeVisor.exe.config
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\bin\Debug\RuntimeVisor.exe
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\bin\Debug\RuntimeVisor.pdb
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.csproj.AssemblyReference.cache
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.Properties.Resources.resources
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.csproj.GenerateResource.cache
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.csproj.CoreCompileInputs.cache
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.exe
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.pdb
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\bin\Debug\en\RuntimeVisor.resources.dll
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.Resources.Strings.resources
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\RuntimeVisor.Resources.Strings.en.resources
+H:\Trabajo\cv\portafolio\src\rpg-bbk-compiler\job-viewer\RuntimeVisor\RuntimeVisor\obj\Debug\en\RuntimeVisor.resources.dll

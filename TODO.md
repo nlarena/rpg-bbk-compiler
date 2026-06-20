@@ -11,7 +11,7 @@ For the architectural context of each item see [`docs/architecture.md`](docs/arc
 - [x] Initial architecture documented (`docs/architecture.md`)
 - [x] Monorepo module structure (9 subprojects)
 - [x] README + `.gitignore` + `LICENSE`
-- [x] Public repo created on GitHub: `NicLarUniversidad/rpg-bbk-compiler`
+- [x] Public repo created on GitHub: `nlarena/rpg-bbk-compiler`
 - [x] **`plugin-bbk` — complete (12/12 IDE features, 72 tests green)**
   - [x] Syntax highlighting + lexer/parser (BBK.bnf via Grammar-Kit)
   - [x] Basic + identifier + member autocomplete
