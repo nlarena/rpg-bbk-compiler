@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -54,10 +55,43 @@ public class RecordService {
         return jdbc.queryForList(sql);
     }
 
-    /** CHAIN: lectura aleatoria por RRN. */
+    /** CHAIN por RRN: lectura aleatoria por número de registro. */
     @Transactional(readOnly = true)
     public Map<String, Object> read(String library, String name, long rrn) {
         return readRow(require(library, name), rrn);
+    }
+
+    /**
+     * CHAIN por clave: lectura aleatoria por valor de clave. Devuelve el primer
+     * registro que matchea, en orden de clave (con clave no-única puede haber
+     * varios). Sin coincidencia &rarr; 404 (el equivalente de {@code %found = off}).
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> chain(String library, String name, Map<String, Object> keyValues) {
+        FileObject file = require(library, name);
+        List<KeyColumn> where = keyPrefix(file, keyValues);
+        String sql = "SELECT " + selectColumns(file) + " FROM " + q(file.getTableName())
+            + " WHERE " + whereClause(where) + " ORDER BY " + keyOrder(file) + " LIMIT 1";
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, values(where));
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "CHAIN sin coincidencia (%found = off) en " + file.qualifiedName());
+        }
+        return rows.get(0);
+    }
+
+    /**
+     * READE / lectura por clave: todos los registros que matchean la clave (parcial)
+     * dada, en orden de clave. La clave parcial debe usar los primeros campos de la
+     * clave, en orden.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> readByKey(String library, String name, Map<String, Object> keyValues) {
+        FileObject file = require(library, name);
+        List<KeyColumn> where = keyPrefix(file, keyValues);
+        String sql = "SELECT " + selectColumns(file) + " FROM " + q(file.getTableName())
+            + " WHERE " + whereClause(where) + " ORDER BY " + keyOrder(file) + " LIMIT " + MAX_ROWS;
+        return jdbc.queryForList(sql, values(where));
     }
 
     /** WRITE: inserta un registro y devuelve el registro creado (con su RRN). */
@@ -126,6 +160,59 @@ public class RecordService {
         return files.findByLibraryAndName(lib, nm)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                 "no existe el archivo " + lib + "/" + nm));
+    }
+
+    /** Una columna clave del WHERE, con su valor. */
+    private record KeyColumn(String column, Object value) {}
+
+    /** Campos clave del archivo, en orden de keyPosition. */
+    private static List<FileField> orderedKeys(FileObject file) {
+        return file.getFields().stream()
+            .filter(FileField::isKey)
+            .sorted(Comparator.comparingInt(FileField::getKeyPosition))
+            .toList();
+    }
+
+    /** Lista de columnas de la clave para el ORDER BY (orden de acceso). */
+    private static String keyOrder(FileObject file) {
+        return orderedKeys(file).stream().map(f -> q(f.getName())).collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Valida que los campos provistos sean un <b>prefijo de la clave</b> (los
+     * primeros, en orden) y arma las columnas del WHERE. Es la regla de RPG: el
+     * acceso por clave usa la clave completa o una parcial por la izquierda.
+     */
+    private static List<KeyColumn> keyPrefix(FileObject file, Map<String, Object> keyValues) {
+        List<FileField> keys = orderedKeys(file);
+        if (keys.isEmpty()) throw badRequest("el archivo " + file.qualifiedName() + " no tiene clave");
+
+        Map<String, Object> provided = new LinkedHashMap<>();
+        if (keyValues != null) {
+            for (Map.Entry<String, Object> e : keyValues.entrySet()) {
+                provided.put(e.getKey().trim().toUpperCase(), e.getValue());
+            }
+        }
+        if (provided.isEmpty()) throw badRequest("indicá al menos el primer campo de la clave");
+        if (provided.size() > keys.size()) throw badRequest("la clave tiene " + keys.size() + " campo(s)");
+
+        List<KeyColumn> where = new ArrayList<>();
+        for (int i = 0; i < provided.size(); i++) {
+            FileField kf = keys.get(i);
+            if (!provided.containsKey(kf.getName())) {
+                throw badRequest("la clave parcial debe usar los primeros campos clave en orden; falta " + kf.getName());
+            }
+            where.add(new KeyColumn(kf.getName(), provided.get(kf.getName())));
+        }
+        return where;
+    }
+
+    private static String whereClause(List<KeyColumn> cols) {
+        return cols.stream().map(c -> q(c.column()) + " = ?").collect(Collectors.joining(" AND "));
+    }
+
+    private static Object[] values(List<KeyColumn> cols) {
+        return cols.stream().map(KeyColumn::value).toArray();
     }
 
     /** Nombres de campo del record format (las columnas válidas, sin RRN). */

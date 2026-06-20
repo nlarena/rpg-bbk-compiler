@@ -39,8 +39,11 @@ public class FileService {
         this.jdbc = jdbc;
     }
 
+    /** Nombre del índice que materializa la clave de acceso (el access path). */
+    private static final String KEY_INDEX = "k_access";
+
     /** Especificación de un campo a declarar (entrada del servicio). */
-    public record FieldSpec(String name, FieldType type, int length, int decimals) {}
+    public record FieldSpec(String name, FieldType type, int length, int decimals, int keyPosition) {}
 
     @Transactional
     public FileObject declare(String rawName, String rawLibrary, String description, List<FieldSpec> fields) {
@@ -60,9 +63,12 @@ public class FileService {
         // 1) Crear la tabla física real (DDL: en MySQL hace commit implícito).
         jdbc.execute(buildCreateTable(tableName, norm));
 
-        // 2) Persistir la definición.
+        // 2) Crear el índice de la clave de acceso (si hay campos clave).
+        createKeyIndex(tableName, norm);
+
+        // 3) Persistir la definición.
         FileObject file = new FileObject(name, library, blankToNull(description), tableName, Instant.now());
-        for (FieldSpec f : norm) file.addField(f.name(), f.type(), f.length(), f.decimals());
+        for (FieldSpec f : norm) file.addField(f.name(), f.type(), f.length(), f.decimals(), f.keyPosition());
         return repo.save(file);
     }
 
@@ -107,9 +113,13 @@ public class FileService {
             jdbc.execute("ALTER TABLE " + quoteIdent(table) + " " + String.join(", ", actions));
         }
 
+        // Refrescar el índice de la clave de acceso (drop + recrear según la nueva clave).
+        dropKeyIndexIfExists(table);
+        createKeyIndex(table, norm);
+
         // Reemplazar la definición de campos y el texto.
         file.getFields().clear();
-        for (FieldSpec f : norm) file.addField(f.name(), f.type(), f.length(), f.decimals());
+        for (FieldSpec f : norm) file.addField(f.name(), f.type(), f.length(), f.decimals(), f.keyPosition());
         file.setDescription(blankToNull(description));
         return repo.save(file);
     }
@@ -138,9 +148,38 @@ public class FileService {
             if (f.type() == FieldType.DECIMAL && (f.decimals() < 0 || f.decimals() > f.length())) {
                 throw badRequest("campo " + fn + ": decimales inválidos (0.." + f.length() + ")");
             }
-            result.add(new FieldSpec(fn, f.type(), f.length(), f.decimals()));
+            if (f.keyPosition() < 0) {
+                throw badRequest("campo " + fn + ": posición de clave inválida");
+            }
+            result.add(new FieldSpec(fn, f.type(), f.length(), f.decimals(), f.keyPosition()));
         }
         return result;
+    }
+
+    /** Campos clave (keyPosition > 0), ordenados por su posición en la clave. */
+    private static List<FieldSpec> keyFields(List<FieldSpec> fields) {
+        return fields.stream()
+            .filter(f -> f.keyPosition() > 0)
+            .sorted(java.util.Comparator.comparingInt(FieldSpec::keyPosition))
+            .toList();
+    }
+
+    /** Crea el índice de la clave de acceso (no-único) sobre los campos clave, si hay. */
+    private void createKeyIndex(String tableName, List<FieldSpec> fields) {
+        List<FieldSpec> keys = keyFields(fields);
+        if (keys.isEmpty()) return;
+        String cols = keys.stream().map(f -> quoteIdent(f.name())).collect(java.util.stream.Collectors.joining(", "));
+        jdbc.execute("CREATE INDEX " + quoteIdent(KEY_INDEX) + " ON " + quoteIdent(tableName) + " (" + cols + ")");
+    }
+
+    private void dropKeyIndexIfExists(String tableName) {
+        Integer n = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM information_schema.statistics "
+                + "WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+            Integer.class, tableName, KEY_INDEX);
+        if (n != null && n > 0) {
+            jdbc.execute("DROP INDEX " + quoteIdent(KEY_INDEX) + " ON " + quoteIdent(tableName));
+        }
     }
 
     private boolean tableExists(String tableName) {

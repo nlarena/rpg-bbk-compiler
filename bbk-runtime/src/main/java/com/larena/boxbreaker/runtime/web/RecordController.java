@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +39,21 @@ public class RecordController {
         return records.readAll(library, name, limit);
     }
 
-    /** CHAIN: lectura aleatoria por RRN. */
+    /** CHAIN por clave: el primer registro que matchea la clave dada (404 si no hay). */
+    @GetMapping("/chain")
+    public Map<String, Object> chain(@PathVariable String library, @PathVariable String name,
+                                     @RequestParam Map<String, String> key) {
+        return records.chain(library, name, new LinkedHashMap<>(key));
+    }
+
+    /** READE / lectura por clave: todos los registros de la clave (parcial) dada, en orden de clave. */
+    @GetMapping("/key")
+    public List<Map<String, Object>> readByKey(@PathVariable String library, @PathVariable String name,
+                                               @RequestParam Map<String, String> key) {
+        return records.readByKey(library, name, new LinkedHashMap<>(key));
+    }
+
+    /** CHAIN por RRN: lectura aleatoria por número de registro. */
     @GetMapping("/{rrn}")
     public Map<String, Object> read(@PathVariable String library, @PathVariable String name,
                                     @PathVariable long rrn) {

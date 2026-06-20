@@ -82,6 +82,7 @@ namespace RuntimeVisor
             AddColumn(gridFields, Strings.FilesColType, 110);
             AddColumn(gridFields, Strings.FilesColLength, 90);
             AddColumn(gridFields, Strings.FilesColDecimals, 100);
+            AddColumn(gridFields, Strings.FilesColKey, 70);
         }
 
         private async void LoadFiles()
@@ -132,7 +133,8 @@ namespace RuntimeVisor
             if (fields == null) return;
             foreach (FileFieldDto fld in fields)
             {
-                gridFields.Rows.Add(fld.name, fld.type, fld.length, fld.decimals);
+                string key = fld.keyPosition > 0 ? fld.keyPosition.ToString() : "";
+                gridFields.Rows.Add(fld.name, fld.type, fld.length, fld.decimals, key);
             }
         }
 

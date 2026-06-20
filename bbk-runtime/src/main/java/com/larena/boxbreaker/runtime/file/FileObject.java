@@ -66,8 +66,8 @@ public class FileObject {
     /** Nombre calificado en forma IBM&nbsp;i {@code biblioteca/archivo}. */
     public String qualifiedName() { return library + "/" + name; }
 
-    public FileField addField(String name, FieldType type, int length, int decimals) {
-        FileField field = new FileField(this, fields.size(), name, type, length, decimals);
+    public FileField addField(String name, FieldType type, int length, int decimals, int keyPosition) {
+        FileField field = new FileField(this, fields.size(), name, type, length, decimals, keyPosition);
         fields.add(field);
         return field;
     }

@@ -65,7 +65,8 @@ namespace RuntimeVisor
             {
                 foreach (FileFieldDto f in file.fields)
                 {
-                    grid.Rows.Add(f.name, f.type, f.length, f.decimals);
+                    string key = f.keyPosition > 0 ? f.keyPosition.ToString() : "";
+                    grid.Rows.Add(f.name, f.type, f.length, f.decimals, key);
                 }
             }
             SetNote(Strings.FilesHint, Info);
@@ -126,6 +127,7 @@ namespace RuntimeVisor
 
             grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = Strings.FilesColLength, Width = 90 });
             grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = Strings.FilesColDecimals, Width = 100 });
+            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = Strings.FilesColKey, Width = 70 });
         }
 
         private async void Submit()
@@ -149,7 +151,8 @@ namespace RuntimeVisor
                     name = fname.Trim(),
                     type = Convert.ToString(row.Cells[1].Value),
                     length = ParseInt(row.Cells[2].Value),
-                    decimals = ParseInt(row.Cells[3].Value)
+                    decimals = ParseInt(row.Cells[3].Value),
+                    keyPosition = ParseInt(row.Cells[4].Value)
                 });
             }
             if (fields.Count == 0)

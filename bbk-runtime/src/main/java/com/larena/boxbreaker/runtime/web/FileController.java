@@ -55,7 +55,7 @@ public class FileController {
 
     private static List<FileService.FieldSpec> toSpecs(List<FieldDef> fields) {
         return (fields == null ? List.<FieldDef>of() : fields).stream()
-            .map(f -> new FileService.FieldSpec(f.name(), parseType(f.type()), nz(f.length()), nz(f.decimals())))
+            .map(f -> new FileService.FieldSpec(f.name(), parseType(f.type()), nz(f.length()), nz(f.decimals()), nz(f.keyPosition())))
             .toList();
     }
 
@@ -78,7 +78,7 @@ public class FileController {
 
     public record ModifyFileRequest(String text, List<FieldDef> fields) {}
 
-    public record FieldDef(String name, String type, Integer length, Integer decimals) {}
+    public record FieldDef(String name, String type, Integer length, Integer decimals, Integer keyPosition) {}
 
     public record FileResponse(String name, String library, String text, String tableName,
                                String createdAt, List<FieldResponse> fields) {
@@ -92,9 +92,9 @@ public class FileController {
         private static String iso(Instant when) { return when == null ? null : when.toString(); }
     }
 
-    public record FieldResponse(String name, String type, int length, int decimals) {
+    public record FieldResponse(String name, String type, int length, int decimals, int keyPosition) {
         static FieldResponse of(FileField f) {
-            return new FieldResponse(f.getName(), f.getType().name(), f.getLength(), f.getDecimals());
+            return new FieldResponse(f.getName(), f.getType().name(), f.getLength(), f.getDecimals(), f.getKeyPosition());
         }
     }
 }

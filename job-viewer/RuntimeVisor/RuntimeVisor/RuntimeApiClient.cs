@@ -34,6 +34,7 @@ namespace RuntimeVisor
         public string type { get; set; }     // CHAR | DECIMAL | INTEGER | DATE
         public int length { get; set; }
         public int decimals { get; set; }
+        public int keyPosition { get; set; }  // 0 = no es clave; 1..n = orden en la clave de acceso
     }
 
     /// <summary>Un archivo de base de datos (physical file), tal como lo expone <c>/api/files</c>.</summary>

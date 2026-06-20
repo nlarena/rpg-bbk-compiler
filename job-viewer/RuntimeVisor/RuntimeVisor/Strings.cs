@@ -57,6 +57,7 @@ namespace RuntimeVisor
         public static string FilesColType => Get();
         public static string FilesColLength => Get();
         public static string FilesColDecimals => Get();
+        public static string FilesColKey => Get();
         public static string FilesFkeys => Get();
         public static string FilesHint => Get();
         public static string FilesNeedName => Get();

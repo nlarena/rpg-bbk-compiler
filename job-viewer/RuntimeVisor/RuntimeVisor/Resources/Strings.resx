@@ -94,6 +94,7 @@
   <data name="FilesColType" xml:space="preserve"><value>Tipo</value></data>
   <data name="FilesColLength" xml:space="preserve"><value>Largo</value></data>
   <data name="FilesColDecimals" xml:space="preserve"><value>Decimales</value></data>
+  <data name="FilesColKey" xml:space="preserve"><value>Clave</value></data>
   <data name="FilesFkeys" xml:space="preserve"><value>F3=Volver    F6=Crear</value></data>
   <data name="FilesHint" xml:space="preserve"><value>Completá el archivo y sus campos, luego F6 para crear.</value></data>
   <data name="FilesNeedName" xml:space="preserve"><value>Indicá archivo y biblioteca.</value></data>

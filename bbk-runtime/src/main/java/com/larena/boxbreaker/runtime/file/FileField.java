@@ -43,15 +43,20 @@ public class FileField {
     @Column(nullable = false)
     private int position;
 
+    /** Posición en la clave de acceso (0 = no es campo clave; 1..n = orden en la clave). */
+    @Column(name = "key_position", nullable = false)
+    private int keyPosition;
+
     protected FileField() {}   // for JPA
 
-    FileField(FileObject file, int position, String name, FieldType type, int length, int decimals) {
+    FileField(FileObject file, int position, String name, FieldType type, int length, int decimals, int keyPosition) {
         this.file = file;
         this.position = position;
         this.name = name;
         this.type = type;
         this.length = length;
         this.decimals = decimals;
+        this.keyPosition = keyPosition;
     }
 
     public Long getId() { return id; }
@@ -60,4 +65,6 @@ public class FileField {
     public int getLength() { return length; }
     public int getDecimals() { return decimals; }
     public int getPosition() { return position; }
+    public int getKeyPosition() { return keyPosition; }
+    public boolean isKey() { return keyPosition > 0; }
 }
