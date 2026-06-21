@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Compiles a BBK AST to C source text — the second back-end, sharing the same
@@ -47,7 +48,13 @@ public final class CCompiler {
     }
 
     private record Binding(Ct type, boolean array, int dim, int scale, String cname) {}
-    private record Sig(List<Ct> paramTypes, List<Boolean> paramArray, Ct ret) {}
+
+    /** A procedure parameter as lowered to C: a scalar/array, or a DS flattened to its subfields. */
+    private interface Param {}
+    private record ScalarParam(Ct ct, boolean array, int scale) implements Param {}
+    private record DsParam(List<DsField> fields) implements Param {}
+    private record DsField(String subName, Ct ct, int scale) {}
+    private record Sig(List<Param> params, Ct ret) {}
 
     private static final String PRELUDE = """
         #define __USE_MINGW_ANSI_STDIO 1
@@ -57,6 +64,7 @@ public final class CCompiler {
         #include <ctype.h>
         #include <math.h>
         #include <setjmp.h>
+        #include <time.h>
 
         static jmp_buf bbk_jb[64];
         static int bbk_jsp = 0;
@@ -115,6 +123,70 @@ public final class CCompiler {
             if (fabsl(scaled - r) < 1e-6L) scaled = r;   // snap away binary-rep noise near an integer
             return truncl(scaled) / f;
         }
+
+        /* --- date runtime: epoch-day / seconds, calendario civil (mismos resultados que java.time) --- */
+        static long long bbk_dfc(long long y, unsigned m, unsigned d) {        /* days_from_civil */
+            y -= m <= 2;
+            long long era = (y >= 0 ? y : y - 399) / 400;
+            unsigned yoe = (unsigned)(y - era * 400);
+            unsigned doy = (153u * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+            unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+            return era * 146097 + (long long)doe - 719468;
+        }
+        static void bbk_cfd(long long z, long long* y, unsigned* m, unsigned* d) {   /* civil_from_days */
+            z += 719468;
+            long long era = (z >= 0 ? z : z - 146096) / 146097;
+            unsigned doe = (unsigned)(z - era * 146097);
+            unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+            long long yy = (long long)yoe + era * 400;
+            unsigned doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+            unsigned mp = (5 * doy + 2) / 153;
+            *d = doy - (153 * mp + 2) / 5 + 1;
+            *m = mp < 10 ? mp + 3 : mp - 9;
+            *y = yy + (*m <= 2);
+        }
+        static long long bbk_fdiv(long long a, long long b) { long long q = a / b; if ((a % b != 0) && ((a < 0) != (b < 0))) q--; return q; }
+        static long long bbk_fmodll(long long a, long long b) { long long r = a % b; if (r != 0 && ((r < 0) != (b < 0))) r += b; return r; }
+        static unsigned bbk_lastday(long long y, unsigned m) {
+            static const unsigned dim[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+            if (m == 2) return (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 29 : 28;
+            return dim[m - 1];
+        }
+        static long long bbk_date_parse(const char* s) { long long y; unsigned m, d; sscanf(s, "%lld-%u-%u", &y, &m, &d); return bbk_dfc(y, m, d); }
+        static char* bbk_date_str(long long ed) { long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d); char* r = (char*) malloc(16); snprintf(r, 16, "%04lld-%02u-%02u", y, m, d); return r; }
+        static long long bbk_date_today(void) { return bbk_fdiv((long long) time(NULL), 86400); }
+        static long long bbk_date_addmonths(long long ed, long long n) {
+            long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d);
+            long long tot = y * 12 + (long long)(m - 1) + n, ny = bbk_fdiv(tot, 12);
+            unsigned nm = (unsigned)(tot - ny * 12) + 1, ld = bbk_lastday(ny, nm);
+            if (d > ld) d = ld;
+            return bbk_dfc(ny, nm, d);
+        }
+        static long long bbk_date_addyears(long long ed, long long n) {
+            long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d);
+            y += n; unsigned ld = bbk_lastday(y, m); if (d > ld) d = ld;
+            return bbk_dfc(y, m, d);
+        }
+        static long long bbk_date_year(long long ed) { long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d); return y; }
+        static long long bbk_date_month(long long ed) { long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d); return m; }
+        static long long bbk_date_day(long long ed) { long long y; unsigned m, d; bbk_cfd(ed, &y, &m, &d); return d; }
+        static long long bbk_time_parse(const char* s) { unsigned h, mi, se; sscanf(s, "%u:%u:%u", &h, &mi, &se); return (long long) h * 3600 + mi * 60 + se; }
+        static char* bbk_time_str(long long s) { s = bbk_fmodll(s, 86400); char* r = (char*) malloc(12); snprintf(r, 12, "%02lld:%02lld:%02lld", s / 3600, (s / 60) % 60, s % 60); return r; }
+        static long long bbk_time_add(long long s, long long delta) { return bbk_fmodll(s + delta, 86400); }
+        static long long bbk_time_hour(long long s) { return bbk_fmodll(s, 86400) / 3600; }
+        static long long bbk_time_minute(long long s) { return (bbk_fmodll(s, 86400) / 60) % 60; }
+        static long long bbk_time_second(long long s) { return bbk_fmodll(s, 86400) % 60; }
+        static long long bbk_ts_parse(const char* s) { long long y; unsigned mo, d, h, mi, se; sscanf(s, "%lld-%u-%uT%u:%u:%u", &y, &mo, &d, &h, &mi, &se); return bbk_dfc(y, mo, d) * 86400 + (long long) h * 3600 + mi * 60 + se; }
+        static char* bbk_ts_str(long long es) { long long ed = bbk_fdiv(es, 86400), tod = bbk_fmodll(es, 86400), y; unsigned mo, d; bbk_cfd(ed, &y, &mo, &d); char* r = (char*) malloc(24); snprintf(r, 24, "%04lld-%02u-%02uT%02lld:%02lld:%02lld", y, mo, d, tod / 3600, (tod / 60) % 60, tod % 60); return r; }
+        static long long bbk_ts_now(void) { return (long long) time(NULL); }
+        static long long bbk_ts_addmonths(long long es, long long n) { return bbk_date_addmonths(bbk_fdiv(es, 86400), n) * 86400 + bbk_fmodll(es, 86400); }
+        static long long bbk_ts_addyears(long long es, long long n) { return bbk_date_addyears(bbk_fdiv(es, 86400), n) * 86400 + bbk_fmodll(es, 86400); }
+        static long long bbk_ts_year(long long es) { return bbk_date_year(bbk_fdiv(es, 86400)); }
+        static long long bbk_ts_month(long long es) { return bbk_date_month(bbk_fdiv(es, 86400)); }
+        static long long bbk_ts_day(long long es) { return bbk_date_day(bbk_fdiv(es, 86400)); }
+        static long long bbk_ts_hour(long long es) { return bbk_fmodll(es, 86400) / 3600; }
+        static long long bbk_ts_minute(long long es) { return (bbk_fmodll(es, 86400) / 60) % 60; }
+        static long long bbk_ts_second(long long es) { return bbk_fmodll(es, 86400) % 60; }
         """;
 
     private SemanticModel model;                 // shared name resolution + types (single source of truth)
@@ -188,7 +260,14 @@ public final class CCompiler {
         currentReturn = sig.ret();
         for (int i = 0; i < p.params().size(); i++) {
             BbkDeclaration.Parameter par = p.params().get(i);
-            locals.put(par.name(), new Binding(sig.paramTypes().get(i), sig.paramArray().get(i), 0, scaleOf(par.type()), par.name()));
+            Param param = sig.params().get(i);
+            if (param instanceof ScalarParam s) {
+                locals.put(par.name(), new Binding(s.ct(), s.array(), 0, s.scale(), par.name()));
+            } else {
+                for (DsField f : ((DsParam) param).fields()) {
+                    locals.put(par.name() + "." + f.subName(), new Binding(f.ct(), false, 0, f.scale(), par.name() + "_" + f.subName()));
+                }
+            }
         }
         collectSubroutines(p.body());
         for (BbkItem item : p.body()) bodyItem(item);
@@ -507,7 +586,11 @@ public final class CCompiler {
 
     private String exprStatement(BbkExpr e) {
         if (e instanceof BbkExpr.Call call && isName(call.target(), "print") && call.args().size() == 1) {
-            Cx arg = expr(call.args().get(0));
+            BbkExpr parg = call.args().get(0);
+            if (model.type(parg) instanceof Type.Scalar ds && isDate(ds.kind())) {   // print(fecha) -> ISO
+                return "printf(\"%s\\n\", " + dateToString(parg, ds.kind()).code() + ")";
+            }
+            Cx arg = expr(parg);
             return switch (arg.type()) {
                 case LONG -> "printf(\"%lld\\n\", " + arg.code() + ")";
                 case DOUBLE -> "printf(\"%g\\n\", " + arg.code() + ")";
@@ -695,15 +778,8 @@ public final class CCompiler {
     }
 
     private Cx invokeProcedure(String name, Sig sig, List<BbkExpr> args) {
-        if (args.size() != sig.paramTypes().size()) throw unsupported("procedure '" + name + "' arity mismatch");
         if (sig.ret() == null) throw unsupported("void call used as a value");
-        StringBuilder sb = new StringBuilder(name).append('(');
-        for (int i = 0; i < args.size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(sig.paramArray().get(i) ? arrayArg(args.get(i)) : coerce(expr(args.get(i)), sig.paramTypes().get(i)));
-        }
-        sb.append(')');
-        return new Cx(sb.toString(), sig.ret());
+        return new Cx(emitCall(name, sig, args), sig.ret());
     }
 
     /** A procedure call used as a statement (may be void). */
@@ -711,12 +787,37 @@ public final class CCompiler {
         if (!(c.target() instanceof BbkExpr.Identifier id)) throw unsupported("call to a non-name target");
         Sig sig = procs.get(id.name());
         if (sig == null) return builtin(id.name(), c.args()).code();
-        StringBuilder sb = new StringBuilder(id.name()).append('(');
-        for (int i = 0; i < c.args().size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(sig.paramArray().get(i) ? arrayArg(c.args().get(i)) : coerce(expr(c.args().get(i)), sig.paramTypes().get(i)));
+        return emitCall(id.name(), sig, c.args());
+    }
+
+    /** Emit a call, flattening each DS argument to its subfields (by value) in the parameter's field order. */
+    private String emitCall(String name, Sig sig, List<BbkExpr> args) {
+        if (args.size() != sig.params().size()) throw unsupported("procedure '" + name + "' arity mismatch");
+        StringBuilder sb = new StringBuilder(name).append('(');
+        boolean first = true;
+        for (int i = 0; i < args.size(); i++) {
+            Param param = sig.params().get(i);
+            if (param instanceof ScalarParam s) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append(s.array() ? arrayArg(args.get(i)) : coerce(expr(args.get(i)), s.ct()));
+            } else {
+                for (DsField f : ((DsParam) param).fields()) {
+                    if (!first) sb.append(", ");
+                    first = false;
+                    Binding sub = dsArgField(args.get(i), f.subName());
+                    sb.append(coerce(new Cx(sub.cname(), sub.type(), sub.scale()), f.ct()));
+                }
+            }
         }
         return sb.append(')').toString();
+    }
+
+    private Binding dsArgField(BbkExpr arg, String subName) {
+        if (!(arg instanceof BbkExpr.Identifier id)) throw unsupported("a data-structure argument must be a variable name");
+        Binding b = lookup(id.name() + "." + subName);
+        if (b == null) throw unsupported("'" + id.name() + "' has no field '" + subName + "' (data structures must match)");
+        return b;
     }
 
     private String arrayArg(BbkExpr arg) {
@@ -738,14 +839,80 @@ public final class CCompiler {
             case "lower" -> new Cx("bbk_lower(" + coerce(expr(args.get(0)), Ct.STRING) + ")", Ct.STRING);
             case "upper" -> new Cx("bbk_upper(" + coerce(expr(args.get(0)), Ct.STRING) + ")", Ct.STRING);
             case "replace" -> new Cx("bbk_replace(" + coerce(expr(args.get(0)), Ct.STRING) + ", " + coerce(expr(args.get(1)), Ct.STRING) + ", " + coerce(expr(args.get(2)), Ct.STRING) + ")", Ct.STRING);
-            case "char" -> new Cx(toStr(expr(args.get(0))), Ct.STRING);
+            case "char" -> charOf(args.get(0));
             case "int" -> toInt(args.get(0));
             case "float" -> new Cx(coerce(expr(args.get(0)), Ct.DOUBLE), Ct.DOUBLE);
             case "dec" -> new Cx(coerce(expr(args.get(0)), Ct.DECIMAL), Ct.DECIMAL, 2);
             case "sqrt" -> new Cx("sqrt(" + coerce(expr(args.get(0)), Ct.DOUBLE) + ")", Ct.DOUBLE);
             case "abs" -> absOf(args.get(0));
-            default -> throw unsupported("function '" + name + "'");
+            default -> { if (DATE_FUNCS.contains(name)) yield dateBuiltin(name, args); throw unsupported("function '" + name + "'"); }
         };
+    }
+
+    // -----------------------------------------------------------------------
+    // Date runtime (DATE/TIME/TIMESTAMP; epoch-day / seconds as long long)
+    // -----------------------------------------------------------------------
+
+    private static final Set<String> DATE_FUNCS = Set.of(
+        "date", "time", "timestamp", "today", "now", "year", "month", "day", "hour", "minute", "second",
+        "adddays", "addmonths", "addyears", "addhours", "addminutes", "addseconds", "diffdays", "diffseconds");
+
+    private static boolean isDate(Type.Kind k) {
+        return k == Type.Kind.DATE || k == Type.Kind.TIME || k == Type.Kind.TIMESTAMP;
+    }
+
+    /** {@code char(x)}: an ISO string for a date/time value, else the usual scalar-to-string. */
+    private Cx charOf(BbkExpr arg) {
+        if (model.type(arg) instanceof Type.Scalar s && isDate(s.kind())) return dateToString(arg, s.kind());
+        return new Cx(toStr(expr(arg)), Ct.STRING);
+    }
+
+    private Cx dateToString(BbkExpr arg, Type.Kind k) {
+        String fn = k == Type.Kind.DATE ? "bbk_date_str" : k == Type.Kind.TIME ? "bbk_time_str" : "bbk_ts_str";
+        return new Cx(fn + "(" + coerce(expr(arg), Ct.LONG) + ")", Ct.STRING);
+    }
+
+    private Cx dateBuiltin(String name, List<BbkExpr> args) {
+        switch (name) {
+            case "date": return new Cx("bbk_date_parse(" + coerce(expr(args.get(0)), Ct.STRING) + ")", Ct.LONG);
+            case "time": return new Cx("bbk_time_parse(" + coerce(expr(args.get(0)), Ct.STRING) + ")", Ct.LONG);
+            case "timestamp": return new Cx("bbk_ts_parse(" + coerce(expr(args.get(0)), Ct.STRING) + ")", Ct.LONG);
+            case "today": return new Cx("bbk_date_today()", Ct.LONG);
+            case "now": return new Cx("bbk_ts_now()", Ct.LONG);
+            default: break;
+        }
+        Type.Kind k = ((Type.Scalar) model.type(args.get(0))).kind();
+        String a0 = coerce(expr(args.get(0)), Ct.LONG);
+        boolean date = k == Type.Kind.DATE, time = k == Type.Kind.TIME;
+        switch (name) {
+            case "year": return new Cx((date ? "bbk_date_year" : "bbk_ts_year") + "(" + a0 + ")", Ct.LONG);
+            case "month": return new Cx((date ? "bbk_date_month" : "bbk_ts_month") + "(" + a0 + ")", Ct.LONG);
+            case "day": return new Cx((date ? "bbk_date_day" : "bbk_ts_day") + "(" + a0 + ")", Ct.LONG);
+            case "hour": return new Cx((time ? "bbk_time_hour" : "bbk_ts_hour") + "(" + a0 + ")", Ct.LONG);
+            case "minute": return new Cx((time ? "bbk_time_minute" : "bbk_ts_minute") + "(" + a0 + ")", Ct.LONG);
+            case "second": return new Cx((time ? "bbk_time_second" : "bbk_ts_second") + "(" + a0 + ")", Ct.LONG);
+            case "adddays": case "addmonths": case "addyears": case "addhours": case "addminutes": case "addseconds":
+                return addUnit(name, k, a0, args.get(1));
+            case "diffdays": return new Cx("((" + a0 + ") - (" + coerce(expr(args.get(1)), Ct.LONG) + "))"
+                + (k == Type.Kind.TIMESTAMP ? " / 86400LL" : ""), Ct.LONG);
+            case "diffseconds": return new Cx("((" + a0 + ") - (" + coerce(expr(args.get(1)), Ct.LONG) + "))", Ct.LONG);
+            default: throw unsupported("date function '" + name + "'");
+        }
+    }
+
+    private Cx addUnit(String name, Type.Kind k, String a0, BbkExpr nArg) {
+        String n = "(" + coerce(expr(nArg), Ct.LONG) + ")";
+        boolean ts = k == Type.Kind.TIMESTAMP;
+        String code = switch (name) {
+            case "adddays" -> "(" + a0 + ") + " + n + (ts ? " * 86400LL" : "");
+            case "addmonths" -> (ts ? "bbk_ts_addmonths" : "bbk_date_addmonths") + "(" + a0 + ", " + n + ")";
+            case "addyears" -> (ts ? "bbk_ts_addyears" : "bbk_date_addyears") + "(" + a0 + ", " + n + ")";
+            case "addhours" -> ts ? "(" + a0 + ") + " + n + " * 3600LL" : "bbk_time_add(" + a0 + ", " + n + " * 3600LL)";
+            case "addminutes" -> ts ? "(" + a0 + ") + " + n + " * 60LL" : "bbk_time_add(" + a0 + ", " + n + " * 60LL)";
+            case "addseconds" -> ts ? "(" + a0 + ") + " + n : "bbk_time_add(" + a0 + ", " + n + ")";
+            default -> throw unsupported("add unit " + name);
+        };
+        return new Cx(code, Ct.LONG);
     }
 
     private Cx toInt(BbkExpr arg) {
@@ -777,6 +944,7 @@ public final class CCompiler {
             return switch (s.kind()) {
                 case INT -> Ct.LONG; case FLOAT -> Ct.DOUBLE; case DECIMAL -> Ct.DECIMAL;
                 case STRING -> Ct.STRING; case BOOL -> Ct.BOOL;
+                case DATE, TIME, TIMESTAMP -> Ct.LONG;     // epoch-day / segundos: long long
             };
         }
         if (t instanceof Type.Array a) return ct(a.element());
@@ -785,9 +953,30 @@ public final class CCompiler {
     }
 
     private Sig toSig(ProcSignature sig) {
-        List<Ct> types = new ArrayList<>();
-        for (Type t : sig.paramTypes()) types.add(ct(t));
-        return new Sig(types, sig.paramArray(), sig.isVoid() ? null : ct(sig.returnType()));
+        List<Param> params = new ArrayList<>();
+        for (int i = 0; i < sig.paramTypes().size(); i++) {
+            Type t = sig.paramTypes().get(i);
+            if (t instanceof Type.Ds ds) {
+                if (ds.array()) throw unsupported("an array of data structures as a parameter");
+                List<DsField> fields = new ArrayList<>();
+                for (Type.Ds.Field f : ds.fields()) fields.add(new DsField(f.name(), ct(f.type()), scaleFromType(f.type())));
+                params.add(new DsParam(fields));
+            } else {
+                params.add(new ScalarParam(ct(t), sig.paramArray().get(i), scaleFromType(t)));
+            }
+        }
+        Ct ret = sig.isVoid() ? null : retCt(sig.returnType());
+        return new Sig(params, ret);
+    }
+
+    private static Ct retCt(Type t) {
+        if (t instanceof Type.Ds) throw unsupported("returning a data structure from a procedure (use a parameter instead)");
+        return ct(t);
+    }
+
+    /** The declared decimal scale of a semantic type (for DECIMAL), else -1. */
+    private static int scaleFromType(Type t) {
+        return t instanceof Type.Scalar s && s.kind() == Type.Kind.DECIMAL ? s.scale() : -1;
     }
 
     // -----------------------------------------------------------------------
@@ -846,23 +1035,35 @@ public final class CCompiler {
     }
 
     private String prototype(String name, Sig sig) {
-        StringBuilder sb = new StringBuilder(sig.ret() == null ? "void" : ctype(sig.ret())).append(' ').append(name).append('(');
-        if (sig.paramTypes().isEmpty()) sb.append("void");
-        for (int i = 0; i < sig.paramTypes().size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(ctype(sig.paramTypes().get(i))).append(" p").append(i).append(sig.paramArray().get(i) ? "[]" : "");
-        }
-        return sb.append(')').toString();
+        return prototype(name, null, sig);
     }
 
     private String prototype(String name, BbkDeclaration.Procedure p, Sig sig) {
-        StringBuilder sb = new StringBuilder(sig.ret() == null ? "void" : ctype(sig.ret())).append(' ').append(name).append('(');
-        if (p.params().isEmpty()) sb.append("void");
-        for (int i = 0; i < p.params().size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(ctype(sig.paramTypes().get(i))).append(' ').append(p.params().get(i).name()).append(sig.paramArray().get(i) ? "[]" : "");
+        List<String> params = cParams(sig, p);
+        String body = params.isEmpty() ? "void" : String.join(", ", params);
+        return (sig.ret() == null ? "void" : ctype(sig.ret())) + " " + name + "(" + body + ")";
+    }
+
+    /** The flattened C parameter list: a scalar/array per scalar param, one per subfield for a DS param.
+     *  The definition ({@code p != null}) uses the BBK names ({@code c_x}); the forward decl uses {@code pN}. */
+    private List<String> cParams(Sig sig, BbkDeclaration.Procedure p) {
+        List<String> out = new ArrayList<>();
+        int slot = 0;
+        for (int i = 0; i < sig.params().size(); i++) {
+            Param param = sig.params().get(i);
+            if (param instanceof ScalarParam s) {
+                String name = p != null ? p.params().get(i).name() : "p" + slot;
+                out.add(ctype(s.ct()) + " " + name + (s.array() ? "[]" : ""));
+                slot++;
+            } else {
+                for (DsField f : ((DsParam) param).fields()) {
+                    String name = p != null ? p.params().get(i).name() + "_" + f.subName() : "p" + slot;
+                    out.add(ctype(f.ct()) + " " + name);
+                    slot++;
+                }
+            }
         }
-        return sb.append(')').toString();
+        return out;
     }
 
     private Binding lookup(String name) {
@@ -903,7 +1104,7 @@ public final class CCompiler {
                 case "PACKED", "ZONED", "BINDEC" -> Ct.DECIMAL;
                 case "BOOL", "IND" -> Ct.BOOL;
                 case "CHAR", "VARCHAR" -> Ct.STRING;
-                case "DATE", "TIME", "TIMESTAMP" -> throw new UnsupportedOperationException("date/time types need a date runtime (not lowered)");
+                case "DATE", "TIME", "TIMESTAMP" -> Ct.LONG;   // epoch-day / segundos: long long
                 case "POINTER" -> throw new UnsupportedOperationException("pointers are not supported by the C back-end");
                 default -> throw new UnsupportedOperationException("type '" + p.name() + "' not supported by the C back-end");
             };

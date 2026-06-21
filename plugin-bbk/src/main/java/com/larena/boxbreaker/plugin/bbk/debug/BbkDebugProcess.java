@@ -10,70 +10,52 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.xdebugger.XDebugProcess;
 import com.intellij.xdebugger.XDebugSession;
 import com.intellij.xdebugger.XDebuggerUtil;
+import com.intellij.xdebugger.XExpression;
 import com.intellij.xdebugger.XSourcePosition;
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler;
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties;
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint;
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider;
 import com.intellij.xdebugger.frame.XSuspendContext;
-import com.larena.boxbreaker.debugger.BbkDebugger;
-import com.larena.boxbreaker.debugger.DebugListener;
-import com.larena.boxbreaker.debugger.DebugResult;
-import com.larena.boxbreaker.debugger.NamedSource;
-import com.larena.boxbreaker.debugger.TraceStep;
+import com.larena.boxbreaker.jvmdebug.BbkDebugController;
+import com.larena.boxbreaker.jvmdebug.BbkDebugListener;
+import com.larena.boxbreaker.jvmdebug.BbkFrame;
+import com.larena.boxbreaker.jvmdebug.BbkPausedContext;
+import com.larena.boxbreaker.jvmdebug.BbkPosition;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Proceso de debug de BBK: breakpoints (incluso cross-file), panel de Variables,
- * step over/into/out y la salida del programa en la consola.
+ * Proceso de debug de BBK <b>sobre el bytecode real</b>: orquesta un
+ * {@link BbkDebugController} (que forkea la JVM con JDWP y se conecta por JDI) y
+ * traduce sus eventos a la UI del XDebugger &mdash; breakpoints (con condición),
+ * step over/into/out, panel de Variables, Evaluate/Watches y la salida en consola.
  *
- * <p>Junta todos los .bbk de la carpeta del archivo en un solo programa (los
- * símbolos cruzados resuelven), corre el intérprete en un hilo y, en cada paso,
- * decide si pausar (breakpoint o step). La pausa bloquea el hilo del intérprete
- * hasta Resume/Step — la costura del {@link DebugListener}.
+ * <p>Hoy depura el archivo abierto (single-file). El multi-archivo (cross-file)
+ * depende del SMAP del compilador, aún no implementado.
  */
-public final class BbkDebugProcess extends XDebugProcess {
-
-    private enum StepMode { NONE, INTO, OVER, OUT }
+public final class BbkDebugProcess extends XDebugProcess implements BbkDebugListener {
 
     private final String filePath;
-    private final List<VirtualFile> bbkFiles = new ArrayList<>();
-    private final Map<String, VirtualFile> byPath = new HashMap<>();
+    private final VirtualFile file;
     private final BbkDebuggerEditorsProvider editorsProvider = new BbkDebuggerEditorsProvider();
+    // línea 1-based -> breakpoint (para leer su condición); también se reenvían al controller
+    private final Map<Integer, XLineBreakpoint<XBreakpointProperties>> breakpoints = new ConcurrentHashMap<>();
 
-    private final Map<String, Set<Integer>> breakpointsByFile = new ConcurrentHashMap<>();   // path -> 1-based lines
-    private final BlockingQueue<Object> resumeSignal = new LinkedBlockingQueue<>();
-
-    private volatile StepMode stepMode = StepMode.NONE;
-    private volatile int stepBaseDepth = 0;
-    private volatile int currentDepth = 0;
-    private volatile boolean stopped = false;
     private ConsoleView console;
+    private volatile BbkDebugController controller;
 
     public BbkDebugProcess(@NotNull XDebugSession session, @NotNull String filePath) {
         super(session);
         this.filePath = filePath;
-        VirtualFile main = LocalFileSystem.getInstance().findFileByPath(filePath);
-        if (main != null && main.getParent() != null) {
-            for (VirtualFile child : main.getParent().getChildren()) {
-                if ("bbk".equals(child.getExtension())) {
-                    bbkFiles.add(child);
-                    byPath.put(child.getPath(), child);
-                }
-            }
-        }
+        this.file = LocalFileSystem.getInstance().findFileByPath(filePath);
     }
 
     @Override
@@ -94,19 +76,21 @@ public final class BbkDebugProcess extends XDebugProcess {
                 @Override
                 public void registerBreakpoint(@NotNull XLineBreakpoint<XBreakpointProperties> bp) {
                     XSourcePosition p = bp.getSourcePosition();
-                    if (p != null) {
-                        breakpointsByFile.computeIfAbsent(p.getFile().getPath(), k -> ConcurrentHashMap.newKeySet())
-                            .add(bp.getLine() + 1);
-                    }
+                    if (p == null) return;
+                    int line = p.getLine() + 1;
+                    breakpoints.put(line, bp);
+                    BbkDebugController c = controller;
+                    if (c != null) c.addBreakpoint(line, conditionOf(bp));   // sesión ya viva: alta en vivo
                 }
 
                 @Override
                 public void unregisterBreakpoint(@NotNull XLineBreakpoint<XBreakpointProperties> bp, boolean temporary) {
                     XSourcePosition p = bp.getSourcePosition();
-                    if (p != null) {
-                        Set<Integer> lines = breakpointsByFile.get(p.getFile().getPath());
-                        if (lines != null) lines.remove(bp.getLine() + 1);
-                    }
+                    if (p == null) return;
+                    int line = p.getLine() + 1;
+                    breakpoints.remove(line);
+                    BbkDebugController c = controller;
+                    if (c != null) c.removeBreakpoint(line);
                 }
             }
         };
@@ -114,106 +98,112 @@ public final class BbkDebugProcess extends XDebugProcess {
 
     @Override
     public void sessionInitialized() {
-        ApplicationManager.getApplication().executeOnPooledThread(this::runProgram);
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                String source = Files.readString(Path.of(filePath));
+                BbkDebugController c = BbkDebugController.launch(source, siblingSources(), this);
+                for (Map.Entry<Integer, XLineBreakpoint<XBreakpointProperties>> e : breakpoints.entrySet()) {
+                    c.addBreakpoint(e.getKey(), conditionOf(e.getValue()));
+                }
+                controller = c;
+                c.start();
+            } catch (Throwable t) {
+                Throwable cause = t.getCause() != null ? t.getCause() : t;
+                printError("No se pudo iniciar el debug: " + (cause.getMessage() != null ? cause.getMessage() : cause.toString()));
+                printError(stackTraceOf(cause));     // detalle completo para diagnosticar
+                getSession().stop();
+            }
+        });
     }
 
-    private void runProgram() {
-        List<NamedSource> sources = new ArrayList<>();
-        try {
-            if (bbkFiles.isEmpty()) {
-                sources.add(new NamedSource(filePath, Files.readString(Path.of(filePath))));
-            } else {
-                for (VirtualFile vf : bbkFiles) {
-                    sources.add(new NamedSource(vf.getPath(), Files.readString(Path.of(vf.getPath()))));
+    /** Los demás {@code .bbk} de la carpeta: aportan declaraciones cross-file (DS, prototipos). */
+    private List<String> siblingSources() {
+        List<String> others = new ArrayList<>();
+        if (file == null || file.getParent() == null) return others;
+        for (VirtualFile child : file.getParent().getChildren()) {
+            if ("bbk".equals(child.getExtension()) && !child.getPath().equals(filePath)) {
+                try {
+                    others.add(Files.readString(Path.of(child.getPath())));
+                } catch (Exception ignored) {
+                    // archivo ilegible: lo salteamos
                 }
             }
-        } catch (Exception e) {
-            printError("No se pudo leer el fuente: " + e.getMessage());
-            getSession().stop();
-            return;
         }
-
-        DebugResult result = BbkDebugger.runFiles(sources, this::onStep);
-        if (!result.ok() && !stopped) {
-            printError(result.error());
-        }
-        if (!stopped) {
-            getSession().stop();
-        }
+        return others;
     }
 
-    /** Por cada sentencia, en el hilo del intérprete. */
-    private DebugListener.Decision onStep(TraceStep step) {
-        if (stopped) return DebugListener.Decision.STOP;
+    // ----- eventos del motor (BbkDebugListener) -----
 
-        print(step.output());
-
-        boolean pause = switch (stepMode) {
-            case INTO -> true;
-            case OVER -> step.depth() <= stepBaseDepth;
-            case OUT -> step.depth() < stepBaseDepth;
-            case NONE -> false;
-        };
-        if (!pause) pause = hasBreakpoint(step);
-
-        if (pause) {
-            VirtualFile vf = byPath.get(step.file());
-            if (vf == null || step.line() <= 0) return DebugListener.Decision.CONTINUE;   // sin posición: no para
-
-            stepMode = StepMode.NONE;
-            currentDepth = step.depth();
-            XSourcePosition pos = XDebuggerUtil.getInstance().createPosition(vf, step.line() - 1);
-            BbkStackFrame frame = new BbkStackFrame(pos, step.variables());
-            getSession().positionReached(new BbkSuspendContext(new BbkExecutionStack(frame)));
-
-            try {
-                resumeSignal.take();
-            } catch (InterruptedException e) {
-                return DebugListener.Decision.STOP;
-            }
-            if (stopped) return DebugListener.Decision.STOP;
+    @Override
+    public void onPaused(BbkPausedContext ctx) {
+        // solo posiciones acá (barato); las variables las lee cada frame perezosamente, en el hilo del IDE
+        List<BbkStackFrame> frames = new ArrayList<>();
+        for (BbkFrame f : ctx.frames()) {
+            frames.add(new BbkStackFrame(positionOf(f.position()), f, ctx::evaluate));
         }
-        return DebugListener.Decision.CONTINUE;
+        if (frames.isEmpty()) {
+            frames.add(new BbkStackFrame(positionOf(ctx.position()), null, ctx::evaluate));
+        }
+        getSession().positionReached(new BbkSuspendContext(new BbkExecutionStack(frames)));
     }
 
-    private boolean hasBreakpoint(TraceStep step) {
-        Set<Integer> lines = breakpointsByFile.get(step.file());
-        return lines != null && step.line() > 0 && lines.contains(step.line());
+    @Override
+    public void onExited(int exitCode) {
+        if (exitCode != 0) printError("El programa terminó con código " + exitCode);
+        getSession().stop();
+    }
+
+    @Override
+    public void onOutput(String text) {
+        print(text);
+    }
+
+    private @Nullable XSourcePosition positionOf(@Nullable BbkPosition pos) {
+        if (pos == null || file == null || pos.line() <= 0) return null;
+        return XDebuggerUtil.getInstance().createPosition(file, pos.line() - 1);
+    }
+
+    private static @Nullable String conditionOf(XLineBreakpoint<XBreakpointProperties> bp) {
+        XExpression c = bp.getConditionExpression();
+        return c == null ? null : c.getExpression();
+    }
+
+    private static String stackTraceOf(Throwable t) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        t.printStackTrace(new java.io.PrintWriter(sw));
+        return sw.toString();
     }
 
     // ----- controles -----
 
     @Override
     public void resume(@Nullable XSuspendContext context) {
-        stepMode = StepMode.NONE;
-        resumeSignal.offer(Boolean.TRUE);
+        BbkDebugController c = controller;
+        if (c != null) c.resume();
     }
 
     @Override
     public void startStepOver(@Nullable XSuspendContext context) {
-        step(StepMode.OVER);
+        BbkDebugController c = controller;
+        if (c != null) c.stepOver();
     }
 
     @Override
     public void startStepInto(@Nullable XSuspendContext context) {
-        step(StepMode.INTO);
+        BbkDebugController c = controller;
+        if (c != null) c.stepInto();
     }
 
     @Override
     public void startStepOut(@Nullable XSuspendContext context) {
-        step(StepMode.OUT);
-    }
-
-    private void step(StepMode mode) {
-        stepMode = mode;
-        stepBaseDepth = currentDepth;
-        resumeSignal.offer(Boolean.TRUE);
+        BbkDebugController c = controller;
+        if (c != null) c.stepOut();
     }
 
     @Override
     public void stop() {
-        stopped = true;
-        resumeSignal.offer(Boolean.TRUE);
+        BbkDebugController c = controller;
+        if (c != null) c.close();
     }
 
     // ----- salida en consola -----

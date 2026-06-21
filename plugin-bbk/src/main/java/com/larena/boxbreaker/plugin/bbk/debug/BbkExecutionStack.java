@@ -7,23 +7,27 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/** Pila de ejecución del debugger BBK: por ahora un solo frame (el actual). */
+/** Pila de ejecución del debugger BBK: el frame actual arriba y la cadena de llamadas debajo. */
 final class BbkExecutionStack extends XExecutionStack {
 
-    private final BbkStackFrame top;
+    private final List<BbkStackFrame> frames;
 
-    BbkExecutionStack(@NotNull BbkStackFrame top) {
+    BbkExecutionStack(@NotNull List<BbkStackFrame> frames) {
         super("BBK");
-        this.top = top;
+        this.frames = frames;
     }
 
     @Override
     public @Nullable XStackFrame getTopFrame() {
-        return top;
+        return frames.isEmpty() ? null : frames.get(0);
     }
 
     @Override
     public void computeStackFrames(int firstFrameIndex, @NotNull XStackFrameContainer container) {
-        container.addStackFrames(List.of(top), true);
+        if (firstFrameIndex < frames.size()) {
+            container.addStackFrames(frames.subList(firstFrameIndex, frames.size()), true);
+        } else {
+            container.addStackFrames(List.of(), true);
+        }
     }
 }

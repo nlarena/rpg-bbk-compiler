@@ -79,6 +79,28 @@ public class BbkDebuggerTest {
     }
 
     @Test
+    public void evaluatesExpressionsInScope() {
+        String src = """
+            DCL-S a INT(10) INZ(7);
+            DCL-S b INT(10) INZ(3);
+            print(char(a + b));
+            """;
+
+        String[] value = {null};
+        boolean[] cond = {false};
+        BbkDebugger.run(src, (step, evaluator) -> {
+            if (step.statement().contains("print")) {   // en el print, a=7 y b=3 están en scope
+                value[0] = evaluator.evaluate("a * b");
+                cond[0] = evaluator.evaluateCondition("a > b");
+            }
+            return DebugListener.Decision.CONTINUE;
+        });
+
+        assertEquals("21", value[0]);            // watch: a * b
+        assertTrue(cond[0]);                     // condición de breakpoint: a > b
+    }
+
+    @Test
     public void decimalLiteralWithDSuffix() {
         // Los literales decimales llevan sufijo 'd': 199.95d. No debe romper.
         DebugResult r = BbkDebugger.trace("""

@@ -152,15 +152,70 @@ public final class BbkBuiltinRegistry {
             "Converts to a timestamp.",
             List.of(p("value", "A string to interpret as a timestamp.")),
             "Returns <code>value</code> converted to a TIMESTAMP.");
-        add("days", "days(n)", "duration",
-            "A day duration.",
-            List.of(p("n", "Number of days.")),
-            "Returns a duration of <code>n</code> days, usable in date arithmetic.");
-        add("diff", "diff(a, b)", "INT",
-            "Difference between two dates/times.",
-            List.of(p("a", "The first date/time/timestamp."),
-                p("b", "The second date/time/timestamp.")),
-            "Returns the difference between <code>a</code> and <code>b</code> in the appropriate unit.");
+        add("today", "today()", "DATE",
+            "Today's date.",
+            List.of(),
+            "Returns the current date.");
+        add("now", "now()", "TIMESTAMP",
+            "Current date and time.",
+            List.of(),
+            "Returns the current date and time.");
+        add("year", "year(d)", "INT",
+            "Year component.",
+            List.of(p("d", "A DATE or TIMESTAMP.")),
+            "Returns the year of <code>d</code>.");
+        add("month", "month(d)", "INT",
+            "Month component (1-12).",
+            List.of(p("d", "A DATE or TIMESTAMP.")),
+            "Returns the month of <code>d</code> (1-12).");
+        add("day", "day(d)", "INT",
+            "Day-of-month component.",
+            List.of(p("d", "A DATE or TIMESTAMP.")),
+            "Returns the day of the month of <code>d</code>.");
+        add("hour", "hour(t)", "INT",
+            "Hour component (0-23).",
+            List.of(p("t", "A TIME or TIMESTAMP.")),
+            "Returns the hour of <code>t</code>.");
+        add("minute", "minute(t)", "INT",
+            "Minute component (0-59).",
+            List.of(p("t", "A TIME or TIMESTAMP.")),
+            "Returns the minute of <code>t</code>.");
+        add("second", "second(t)", "INT",
+            "Second component (0-59).",
+            List.of(p("t", "A TIME or TIMESTAMP.")),
+            "Returns the second of <code>t</code>.");
+        add("adddays", "adddays(d, n)", "DATE/TIMESTAMP",
+            "Adds days.",
+            List.of(p("d", "A DATE or TIMESTAMP."), p("n", "Number of days (negative subtracts).")),
+            "Returns <code>d</code> plus <code>n</code> days.");
+        add("addmonths", "addmonths(d, n)", "DATE/TIMESTAMP",
+            "Adds months.",
+            List.of(p("d", "A DATE or TIMESTAMP."), p("n", "Number of months (negative subtracts).")),
+            "Returns <code>d</code> plus <code>n</code> months; the day is clamped to the last valid day.");
+        add("addyears", "addyears(d, n)", "DATE/TIMESTAMP",
+            "Adds years.",
+            List.of(p("d", "A DATE or TIMESTAMP."), p("n", "Number of years (negative subtracts).")),
+            "Returns <code>d</code> plus <code>n</code> years; Feb 29 is clamped to Feb 28 on non-leap years.");
+        add("addhours", "addhours(t, n)", "TIME/TIMESTAMP",
+            "Adds hours.",
+            List.of(p("t", "A TIME or TIMESTAMP."), p("n", "Number of hours (negative subtracts).")),
+            "Returns <code>t</code> plus <code>n</code> hours (TIME wraps within the day).");
+        add("addminutes", "addminutes(t, n)", "TIME/TIMESTAMP",
+            "Adds minutes.",
+            List.of(p("t", "A TIME or TIMESTAMP."), p("n", "Number of minutes (negative subtracts).")),
+            "Returns <code>t</code> plus <code>n</code> minutes (TIME wraps within the day).");
+        add("addseconds", "addseconds(t, n)", "TIME/TIMESTAMP",
+            "Adds seconds.",
+            List.of(p("t", "A TIME or TIMESTAMP."), p("n", "Number of seconds (negative subtracts).")),
+            "Returns <code>t</code> plus <code>n</code> seconds (TIME wraps within the day).");
+        add("diffdays", "diffdays(a, b)", "INT",
+            "Whole days between two dates.",
+            List.of(p("a", "A DATE or TIMESTAMP."), p("b", "A DATE or TIMESTAMP.")),
+            "Returns the number of whole days from <code>b</code> to <code>a</code>.");
+        add("diffseconds", "diffseconds(a, b)", "INT",
+            "Seconds between two times.",
+            List.of(p("a", "A TIME or TIMESTAMP."), p("b", "A TIME or TIMESTAMP.")),
+            "Returns the number of seconds from <code>b</code> to <code>a</code>.");
     }
 
     /** Case-insensitive lookup. Returns {@code null} if no BIF matches. */

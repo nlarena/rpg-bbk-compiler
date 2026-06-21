@@ -23,10 +23,12 @@ dependencies {
         intellijIdea("2025.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
-    // El debugger de BBK (intérprete + traza) y el núcleo (backend JVM para "Run"):
+    // El debugger de BBK (intérprete, para la acción "Trace") y el núcleo (backend JVM para "Run"):
     // las acciones Run/Trace los invocan in-process.
     implementation(project(":bbk-debugger"))
     implementation(project(":bbk-core"))
+    // El motor de debug por bytecode (JDI): el XDebugger del plugin lo orquesta.
+    implementation(project(":bbk-jvm-debug"))
     testImplementation("junit:junit:4.13.2")
     // For the round-trip validation test: translate RPG with the frontend, then
     // confirm the generated BBK parses + type-checks with this plugin.

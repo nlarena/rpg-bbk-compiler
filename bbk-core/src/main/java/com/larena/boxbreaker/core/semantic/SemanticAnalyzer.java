@@ -49,12 +49,17 @@ public final class SemanticAnalyzer {
     private SemanticModel run(BbkProgram program) {
         module = new Scope(null);
 
-        // pass 1: signatures, constants, module-level globals (so forward refs resolve)
+        // pass 1a: register all data structures first, so LIKEDS in proc signatures/params and
+        // in globals resolves regardless of declaration (or cross-file) order
+        for (BbkItem item : program.items()) {
+            if (item instanceof BbkDeclaration.DataStructure d) registerDs(d.name(), d.subfields(), d.modifiers(), module);
+        }
+        // pass 1b: signatures, constants, module-level globals (forward refs resolve)
         for (BbkItem item : program.items()) {
             switch (item) {
                 case BbkDeclaration.Procedure p -> model.putProcedure(p.name(), signatureOf(p));
                 case BbkDeclaration.Constant c -> model.putConstant(c.name(), c.value());
-                case BbkDeclaration.DataStructure d -> registerDs(d.name(), d.subfields(), d.modifiers(), module);
+                case BbkDeclaration.DataStructure ignored -> { }    // ya registrada en 1a
                 case BbkDeclaration.Variable v -> module.define(v.name(), declaredType(v.type(), v.modifiers(), v.name()));
                 default -> { }
             }
@@ -242,6 +247,13 @@ public final class SemanticAnalyzer {
             case "dec" -> Type.decimal(2);
             case "float", "sqrt" -> Type.FLOAT;
             case "abs" -> args.isEmpty() ? Type.UNKNOWN : model.type(args.get(0));
+            // ----- fechas (date runtime) -----
+            case "date", "today" -> Type.DATE;
+            case "time" -> Type.TIME;
+            case "timestamp", "now" -> Type.TIMESTAMP;
+            case "year", "month", "day", "hour", "minute", "second", "diffdays", "diffseconds" -> Type.INT;
+            case "adddays", "addmonths", "addyears", "addhours", "addminutes", "addseconds"
+                -> args.isEmpty() ? Type.UNKNOWN : model.type(args.get(0));   // misma fecha/hora que el argumento
             default -> { model.diagnose(Diagnostic.error("unknown function '" + name + "'")); yield Type.UNKNOWN; }
         };
     }
@@ -274,10 +286,20 @@ public final class SemanticAnalyzer {
         List<Type> types = new ArrayList<>();
         List<Boolean> arrays = new ArrayList<>();
         for (BbkDeclaration.Parameter par : p.params()) {
-            types.add(scalarType(par.type()));
-            arrays.add(isArray(par.modifiers()));
+            if (par.type() instanceof BbkType.Like like && like.kind() == BbkType.LikeKind.LIKEDS) {
+                types.add(dsTypeFromTemplate(par.name(), like.name(), false, 0));    // DS-por-valor: el tipo lleva el layout
+                arrays.add(false);
+            } else {
+                types.add(scalarType(par.type()));
+                arrays.add(isArray(par.modifiers()));
+            }
         }
-        Type ret = p.returnType() == null ? Type.VOID : scalarType(p.returnType());
+        Type ret;
+        if (p.returnType() instanceof BbkType.Like rlike && rlike.kind() == BbkType.LikeKind.LIKEDS) {
+            ret = dsTypeFromTemplate(p.name() + "_ret", rlike.name(), false, 0);
+        } else {
+            ret = p.returnType() == null ? Type.VOID : scalarType(p.returnType());
+        }
         return new ProcSignature(types, arrays, ret);
     }
 
@@ -299,7 +321,9 @@ public final class SemanticAnalyzer {
                 case "PACKED", "ZONED", "BINDEC" -> Type.decimal(p.decimals() == null ? 0 : p.decimals());
                 case "BOOL", "IND" -> Type.BOOL;
                 case "CHAR", "VARCHAR" -> Type.STRING;
-                case "DATE", "TIME", "TIMESTAMP" -> { model.diagnose(Diagnostic.error("date/time types are not supported by the back-ends")); yield Type.UNKNOWN; }
+                case "DATE" -> Type.DATE;
+                case "TIME" -> Type.TIME;
+                case "TIMESTAMP" -> Type.TIMESTAMP;
                 case "POINTER" -> { model.diagnose(Diagnostic.error("pointers are not supported by the back-ends")); yield Type.UNKNOWN; }
                 default -> { model.diagnose(Diagnostic.error("unsupported type '" + p.name() + "'")); yield Type.UNKNOWN; }
             };

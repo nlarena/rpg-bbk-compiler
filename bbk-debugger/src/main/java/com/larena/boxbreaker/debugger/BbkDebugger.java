@@ -34,9 +34,9 @@ public final class BbkDebugger {
     /** Corre un programa multi-archivo: combina todos los fuentes y los interpreta. */
     public static DebugResult runFiles(List<NamedSource> sources, DebugListener listener) {
         List<TraceStep> collected = new ArrayList<>();
-        DebugListener sink = step -> {
+        DebugListener sink = (step, evaluator) -> {
             collected.add(step);
-            return listener == null ? DebugListener.Decision.CONTINUE : listener.onStep(step);
+            return listener == null ? DebugListener.Decision.CONTINUE : listener.onStep(step, evaluator);
         };
 
         Interpreter interp = null;

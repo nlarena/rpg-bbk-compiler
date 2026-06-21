@@ -13,6 +13,7 @@ include(
     "rpg-frontend",
     "debugger",
     "bbk-debugger",
+    "bbk-jvm-debug",
     "bbk-core",
     "bbk-runtime"
 )

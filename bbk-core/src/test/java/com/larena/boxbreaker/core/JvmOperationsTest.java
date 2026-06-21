@@ -47,6 +47,62 @@ public class JvmOperationsTest {
             "greet(\"World\");"));
     }
 
+    @Test
+    public void procedureWithDataStructureParam() {
+        assertEquals("7", run(
+            "DCL-DS point TEMPLATE QUALIFIED { x INT(10); y INT(10); }\n" +
+            "DCL-PROC sumPoint(p LIKEDS(point)) -> INT(10) { return p.x + p.y; }\n" +
+            "DCL-DS a LIKEDS(point);\n" +
+            "a.x = 3; a.y = 4;\n" +
+            "print(char(sumPoint(a)));"));
+    }
+
+    @Test
+    public void dataStructureParamResolvesRegardlessOfDeclarationOrder() {
+        // el proc con param LIKEDS aparece ANTES de la plantilla (como pasa al combinar archivos)
+        assertEquals("9", run(
+            "DCL-PROC getId(c LIKEDS(rec)) -> INT(10) { return c.id; }\n" +
+            "DCL-DS rec TEMPLATE QUALIFIED { id INT(10); }\n" +
+            "DCL-DS r LIKEDS(rec);\n" +
+            "r.id = 9;\n" +
+            "print(char(getId(r)));"));
+    }
+
+    @Test
+    public void procedureWithDataStructureParamMixedFields() {
+        assertEquals("Nico: 199.95", run(
+            "DCL-DS line TEMPLATE QUALIFIED { name VARCHAR(20); price PACKED(7:2); }\n" +
+            "DCL-PROC show(l LIKEDS(line)) { print(l.name + \": \" + char(l.price)); }\n" +
+            "DCL-DS it LIKEDS(line);\n" +
+            "it.name = \"Nico\"; it.price = 199.95;\n" +
+            "show(it);"));
+    }
+
+    // ---- date runtime (DATE/TIME/TIMESTAMP) -------------------------------
+
+    @Test
+    public void dateRuntime() {
+        assertEquals("2024-01-15", run("print(char(date(\"2024-01-15\")));"));
+        assertEquals("2024-01-15", run("print(date(\"2024-01-15\"));"));                         // print(fecha) -> ISO
+        assertEquals("2024-02-04", run("print(char(adddays(date(\"2024-01-15\"), 20)));"));
+        assertEquals("2024-02-29", run("print(char(addmonths(date(\"2024-01-31\"), 1)));"));      // recorte + bisiesto
+        assertEquals("2026-01-15", run("print(char(addyears(date(\"2024-01-15\"), 2)));"));
+        assertEquals("2024", run("print(char(year(date(\"2024-01-15\"))));"));
+        assertEquals("15", run("print(char(day(date(\"2024-01-15\"))));"));
+        assertEquals("31", run("print(char(diffdays(date(\"2024-02-01\"), date(\"2024-01-01\"))));"));
+        assertEquals("14:05:30", run("print(char(addminutes(time(\"13:45:30\"), 20)));"));
+        assertEquals("16", run("print(char(hour(addhours(time(\"13:00:00\"), 3))));"));
+        assertEquals("2024-01-16T14:45:30", run("print(char(addhours(timestamp(\"2024-01-15T13:45:30\"), 25)));"));
+    }
+
+    @Test
+    public void dateComparisonAndDsField() {
+        assertEquals("before", run(
+            "if (date(\"2024-01-15\") < date(\"2024-02-01\")) { print(\"before\"); } else { print(\"after\"); }"));
+        assertEquals("2024-03-10", run(
+            "DCL-DS r QUALIFIED { d DATE; }\nr.d = date(\"2024-03-10\");\nprint(char(r.d));"));
+    }
+
     // ---- constants --------------------------------------------------------
 
     @Test

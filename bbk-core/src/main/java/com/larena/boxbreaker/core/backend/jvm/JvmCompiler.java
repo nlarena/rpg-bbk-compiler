@@ -1,6 +1,7 @@
 package com.larena.boxbreaker.core.backend.jvm;
 
 import com.larena.boxbreaker.core.ast.*;
+import com.larena.boxbreaker.core.parser.SourceMap;
 import com.larena.boxbreaker.core.semantic.ProcSignature;
 import com.larena.boxbreaker.core.semantic.SemanticAnalyzer;
 import com.larena.boxbreaker.core.semantic.SemanticModel;
@@ -18,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -69,19 +71,34 @@ public final class JvmCompiler {
         static Binding local(int slot, Jt jt, boolean array, int dim, int scale) { return new Binding(false, slot, null, jt, array, dim, scale); }
     }
 
-    private record Sig(List<Jt> paramTypes, List<Boolean> paramArray, Jt ret) {}
+    /** A procedure parameter as lowered to the JVM: a scalar/array, or a DS flattened to its subfields. */
+    private interface Param {}
+    private record ScalarParam(Jt jt, boolean array, int scale) implements Param {}
+    private record DsParam(List<DsField> fields) implements Param {}
+    private record DsField(String subName, Jt jt, int scale) {}
+    private record Sig(List<Param> params, Jt ret) {}
     private record Loop(Label continueLabel, Label breakLabel) {}
     private record FieldDef(String name, String desc) {}
 
     public static final String CLASS_NAME = "bbk.Main";
     private static final String INTERNAL = "bbk/Main";
+    static final String SOURCE_FILE = "Main.bbk";   // atributo SourceFile (debug info para JDI)
     private static final String SB = "java/lang/StringBuilder";
     private static final String STR = "java/lang/String";
     private static final String BIGDEC = "java/math/BigDecimal";
     private static final String ROUND = "java/math/RoundingMode";
+    private static final String LD = "java/time/LocalDate";
+    private static final String LT = "java/time/LocalTime";
+    private static final String LDT = "java/time/LocalDateTime";
+    private static final String ZO = "java/time/ZoneOffset";
+    private static final String DTF = "java/time/format/DateTimeFormatter";
+    private static final Set<String> DATE_FUNCS = Set.of(
+        "date", "time", "timestamp", "today", "now", "year", "month", "day", "hour", "minute", "second",
+        "adddays", "addmonths", "addyears", "addhours", "addminutes", "addseconds", "diffdays", "diffseconds");
 
     private ClassWriter cw;
     private MethodVisitor mv;
+    private SourceMap sourceMap;          // posiciones de fuente (debug info); null = sin debug
 
     // Module scope.
     private SemanticModel model;                 // shared name resolution + types (single source of truth)
@@ -101,17 +118,30 @@ public final class JvmCompiler {
     private Jt currentReturn;
 
     public static byte[] compile(BbkProgram program) {
-        return new JvmCompiler().build(program);
+        return compile(program, null);
     }
 
-    private byte[] build(BbkProgram program) {
+    /** Compila emitiendo además info de debug (números de línea) desde {@code sourceMap}. */
+    public static byte[] compile(BbkProgram program, SourceMap sourceMap) {
+        return new JvmCompiler().build(program, sourceMap);
+    }
+
+    private byte[] build(BbkProgram program, SourceMap sourceMap) {
+        this.sourceMap = sourceMap;
         model = SemanticAnalyzer.analyze(program);      // resolve names + types once, up front
         cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         cw.visit(V17, ACC_PUBLIC | ACC_FINAL, INTERNAL, null, "java/lang/Object", null);
+        cw.visitSource(SOURCE_FILE, null);              // SourceFile: el debugger sabe de qué fuente viene la clase
 
         // procedure signatures and constants come from the shared model; this back-end only
         // builds the physical layout (fields/slots) here.
-        model.procedures().forEach((name, sig) -> procs.put(name, toSig(sig)));
+        model.procedures().forEach((name, sig) -> {
+            try {
+                procs.put(name, toSig(sig));
+            } catch (UnsupportedOperationException ex) {
+                throw new UnsupportedOperationException("procedure '" + name + "' has a parameter or return type the bytecode back-end can't lower: " + ex.getMessage());
+            }
+        });
         for (BbkItem item : program.items()) {
             switch (item) {
                 case BbkDeclaration.DataStructure d -> registerDs(d.name(), d.subfields(), d.modifiers(), true);
@@ -137,6 +167,8 @@ public final class JvmCompiler {
     private void emitMain(List<BbkItem> items) {
         mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null);
         mv.visitCode();
+        Label methodStart = new Label();
+        mv.visitLabel(methodStart);
         startMethod(1, null);
         collectSubroutines(items);
         for (BbkItem item : items) {
@@ -154,6 +186,7 @@ public final class JvmCompiler {
             if (sig.ret() != null) mv.visitInsn(wide(sig.ret()) ? POP2 : POP);
         }
         mv.visitInsn(RETURN);
+        localVariableTable(methodStart);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -162,17 +195,52 @@ public final class JvmCompiler {
         Sig sig = procs.get(p.name());
         mv = cw.visitMethod(ACC_PRIVATE | ACC_STATIC, p.name(), descriptor(sig), null, null);
         mv.visitCode();
+        Label methodStart = new Label();
+        mv.visitLabel(methodStart);
         startMethod(0, sig.ret());
         for (int i = 0; i < p.params().size(); i++) {
             BbkDeclaration.Parameter par = p.params().get(i);
-            bindParam(par.name(), sig.paramTypes().get(i), sig.paramArray().get(i), scaleOf(par.type()));
+            Param param = sig.params().get(i);
+            if (param instanceof ScalarParam s) {
+                bindParam(par.name(), s.jt(), s.array(), s.scale());
+            } else {
+                for (DsField f : ((DsParam) param).fields()) bindParam(par.name() + "." + f.subName(), f.jt(), false, f.scale());
+            }
         }
         collectSubroutines(p.body());
         for (BbkItem item : p.body()) bodyItem(item);
         if (sig.ret() == null) mv.visitInsn(RETURN);
         else { pushDefaultScalar(sig.ret()); returnValue(sig.ret()); }
+        localVariableTable(methodStart);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+
+    /**
+     * Emite el LocalVariableTable del método actual: el nombre BBK de cada local/parámetro
+     * con alcance a todo el método. Los subcampos de DS se mangling a {@code ds$sub} (el '.'
+     * no es un nombre de variable local válido en la JVM), igual que los campos globales.
+     */
+    private void localVariableTable(Label methodStart) {
+        if (sourceMap == null) return;                  // solo en builds con info de debug
+        Label methodEnd = new Label();
+        mv.visitLabel(methodEnd);
+        Map<Integer, String> names = new TreeMap<>();   // un entry por slot
+        Map<Integer, Binding> bySlot = new HashMap<>();
+        for (Map.Entry<String, Binding> e : locals.entrySet()) {
+            Binding b = e.getValue();
+            if (b.global()) continue;
+            String prev = names.get(b.slot());
+            if (prev == null || (!prev.contains(".") && e.getKey().contains("."))) {   // preferí el nombre calificado del DS
+                names.put(b.slot(), e.getKey());
+                bySlot.put(b.slot(), b);
+            }
+        }
+        for (Map.Entry<Integer, String> e : names.entrySet()) {
+            Binding b = bySlot.get(e.getKey());
+            mv.visitLocalVariable(e.getValue().replace('.', '$'), descOf(b.jt(), b.array()), null,
+                methodStart, methodEnd, b.slot());
+        }
     }
 
     private void startMethod(int firstSlot, Jt returnType) {
@@ -205,7 +273,19 @@ public final class JvmCompiler {
         }
     }
 
+    /** Emite el número de línea BBK de este item (LineNumberTable), si hay debug info. */
+    private void lineNumber(BbkItem item) {
+        if (sourceMap == null) return;
+        int line = sourceMap.lineOf(item);
+        if (line > 0) {
+            Label label = new Label();
+            mv.visitLabel(label);
+            mv.visitLineNumber(line, label);
+        }
+    }
+
     private void statement(BbkStatement s) {
+        lineNumber(s);
         switch (s) {
             case BbkStatement.ExpressionStatement es -> exprStatement(es.expr());
             case BbkStatement.Assignment a -> assignment(a);
@@ -239,6 +319,12 @@ public final class JvmCompiler {
     }
 
     private void print(BbkExpr arg) {
+        if (model.type(arg) instanceof Type.Scalar ps && isDate(ps.kind())) {   // print(fecha) -> ISO
+            mv.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+            dateToString(arg, ps.kind());
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+            return;
+        }
         mv.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
         Jt jt = expr(arg);
         String desc;
@@ -676,15 +762,31 @@ public final class JvmCompiler {
     }
 
     private Jt invokeProcedure(String name, Sig sig, List<BbkExpr> args) {
-        if (args.size() != sig.paramTypes().size()) {
-            throw unsupported("procedure '" + name + "' expects " + sig.paramTypes().size() + " args, got " + args.size());
+        if (args.size() != sig.params().size()) {
+            throw unsupported("procedure '" + name + "' expects " + sig.params().size() + " args, got " + args.size());
         }
         for (int i = 0; i < args.size(); i++) {
-            if (sig.paramArray().get(i)) loadVar(arrayArg(args.get(i)));
-            else coerce(expr(args.get(i)), sig.paramTypes().get(i));
+            Param param = sig.params().get(i);
+            if (param instanceof ScalarParam s) {
+                if (s.array()) loadVar(arrayArg(args.get(i)));
+                else coerce(expr(args.get(i)), s.jt());
+            } else {
+                pushDsArg((DsParam) param, args.get(i));
+            }
         }
         mv.visitMethodInsn(INVOKESTATIC, INTERNAL, name, descriptor(sig), false);
         return sig.ret();
+    }
+
+    /** Push a data-structure argument by value: each of its subfields, in the parameter's field order. */
+    private void pushDsArg(DsParam param, BbkExpr arg) {
+        if (!(arg instanceof BbkExpr.Identifier id)) throw unsupported("a data-structure argument must be a variable name");
+        for (DsField f : param.fields()) {
+            Binding sub = lookup(id.name() + "." + f.subName());
+            if (sub == null) throw unsupported("'" + id.name() + "' has no field '" + f.subName() + "' (data structures must match)");
+            loadVar(sub);
+            coerceTop(sub.jt(), f.jt());
+        }
     }
 
     private Jt builtin(String name, List<BbkExpr> args) {
@@ -698,14 +800,150 @@ public final class JvmCompiler {
             case "lower" -> { return strMethod(args.get(0), "toLowerCase"); }
             case "upper" -> { return strMethod(args.get(0), "toUpperCase"); }
             case "replace" -> { return replace(args); }
-            case "char" -> { leftToString(expr(args.get(0))); return Jt.STRING; }
+            case "char" -> { return charOf(args.get(0)); }
             case "int" -> { return toInt(args.get(0)); }
             case "float" -> { coerce(expr(args.get(0)), Jt.DOUBLE); return Jt.DOUBLE; }
             case "dec" -> { coerce(expr(args.get(0)), Jt.DECIMAL); return Jt.DECIMAL; }
             case "sqrt" -> { coerce(expr(args.get(0)), Jt.DOUBLE); mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "sqrt", "(D)D", false); return Jt.DOUBLE; }
             case "abs" -> { return absOf(args.get(0)); }
-            default -> throw unsupported("function '" + name + "'");
+            default -> { if (DATE_FUNCS.contains(name)) return dateBuiltin(name, args); throw unsupported("function '" + name + "'"); }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Date runtime (DATE/TIME/TIMESTAMP via java.time; epoch-day / seconds as long)
+    // -----------------------------------------------------------------------
+
+    private static boolean isDate(Type.Kind k) {
+        return k == Type.Kind.DATE || k == Type.Kind.TIME || k == Type.Kind.TIMESTAMP;
+    }
+
+    /** {@code char(x)}: an ISO string for a date/time value, else the usual scalar-to-string. */
+    private Jt charOf(BbkExpr arg) {
+        if (model.type(arg) instanceof Type.Scalar s && isDate(s.kind())) return dateToString(arg, s.kind());
+        leftToString(expr(arg));
+        return Jt.STRING;
+    }
+
+    private Jt dateBuiltin(String name, List<BbkExpr> args) {
+        switch (name) {
+            case "date" -> { coerceTop(expr(args.get(0)), Jt.STRING);
+                mv.visitMethodInsn(INVOKESTATIC, LD, "parse", "(Ljava/lang/CharSequence;)Ljava/time/LocalDate;", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, LD, "toEpochDay", "()J", false); return Jt.LONG; }
+            case "time" -> { coerceTop(expr(args.get(0)), Jt.STRING);
+                mv.visitMethodInsn(INVOKESTATIC, LT, "parse", "(Ljava/lang/CharSequence;)Ljava/time/LocalTime;", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, LT, "toSecondOfDay", "()I", false); mv.visitInsn(I2L); return Jt.LONG; }
+            case "timestamp" -> { coerceTop(expr(args.get(0)), Jt.STRING);
+                mv.visitMethodInsn(INVOKESTATIC, LDT, "parse", "(Ljava/lang/CharSequence;)Ljava/time/LocalDateTime;", false);
+                tsToEpoch(); return Jt.LONG; }
+            case "today" -> { mv.visitMethodInsn(INVOKESTATIC, LD, "now", "()Ljava/time/LocalDate;", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, LD, "toEpochDay", "()J", false); return Jt.LONG; }
+            case "now" -> { mv.visitMethodInsn(INVOKESTATIC, LDT, "now", "()Ljava/time/LocalDateTime;", false);
+                tsToEpoch(); return Jt.LONG; }
+            default -> { }
+        }
+        Type.Kind k = ((Type.Scalar) model.type(args.get(0))).kind();
+        boolean dateLike = k == Type.Kind.DATE || k == Type.Kind.TIMESTAMP;
+        boolean timeLike = k == Type.Kind.TIME || k == Type.Kind.TIMESTAMP;
+        return switch (name) {
+            case "year" -> { requireDate(dateLike, name); yield component(args.get(0), k, "getYear"); }
+            case "month" -> { requireDate(dateLike, name); yield component(args.get(0), k, "getMonthValue"); }
+            case "day" -> { requireDate(dateLike, name); yield component(args.get(0), k, "getDayOfMonth"); }
+            case "hour" -> { requireTime(timeLike, name); yield component(args.get(0), k, "getHour"); }
+            case "minute" -> { requireTime(timeLike, name); yield component(args.get(0), k, "getMinute"); }
+            case "second" -> { requireTime(timeLike, name); yield component(args.get(0), k, "getSecond"); }
+            case "adddays" -> { requireDate(dateLike, name); yield addUnit(args, k, "plusDays"); }
+            case "addmonths" -> { requireDate(dateLike, name); yield addUnit(args, k, "plusMonths"); }
+            case "addyears" -> { requireDate(dateLike, name); yield addUnit(args, k, "plusYears"); }
+            case "addhours" -> { requireTime(timeLike, name); yield addUnit(args, k, "plusHours"); }
+            case "addminutes" -> { requireTime(timeLike, name); yield addUnit(args, k, "plusMinutes"); }
+            case "addseconds" -> { requireTime(timeLike, name); yield addUnit(args, k, "plusSeconds"); }
+            case "diffdays" -> diff(args, k, true);
+            case "diffseconds" -> diff(args, k, false);
+            default -> throw unsupported("date function '" + name + "'");
+        };
+    }
+
+    /** Internal java.time class name for a temporal kind. */
+    private static String tName(Type.Kind k) {
+        return k == Type.Kind.DATE ? LD : k == Type.Kind.TIME ? LT : LDT;
+    }
+
+    /** Emit {@code arg}'s epoch value and turn it into the java.time object on the stack. */
+    private void loadTemporal(BbkExpr arg, Type.Kind k) {
+        coerce(expr(arg), Jt.LONG);
+        switch (k) {
+            case DATE -> mv.visitMethodInsn(INVOKESTATIC, LD, "ofEpochDay", "(J)Ljava/time/LocalDate;", false);
+            case TIME -> mv.visitMethodInsn(INVOKESTATIC, LT, "ofSecondOfDay", "(J)Ljava/time/LocalTime;", false);
+            case TIMESTAMP -> {
+                mv.visitInsn(ICONST_0);
+                mv.visitFieldInsn(GETSTATIC, ZO, "UTC", "Ljava/time/ZoneOffset;");
+                mv.visitMethodInsn(INVOKESTATIC, LDT, "ofEpochSecond", "(JILjava/time/ZoneOffset;)Ljava/time/LocalDateTime;", false);
+            }
+            default -> throw unsupported("not a temporal type");
+        }
+    }
+
+    /** Turn the java.time object on the stack back into its epoch long. */
+    private void temporalToEpoch(Type.Kind k) {
+        switch (k) {
+            case DATE -> mv.visitMethodInsn(INVOKEVIRTUAL, LD, "toEpochDay", "()J", false);
+            case TIME -> { mv.visitMethodInsn(INVOKEVIRTUAL, LT, "toSecondOfDay", "()I", false); mv.visitInsn(I2L); }
+            case TIMESTAMP -> tsToEpoch();
+            default -> throw unsupported("not a temporal type");
+        }
+    }
+
+    private void tsToEpoch() {
+        mv.visitFieldInsn(GETSTATIC, ZO, "UTC", "Ljava/time/ZoneOffset;");
+        mv.visitMethodInsn(INVOKEVIRTUAL, LDT, "toEpochSecond", "(Ljava/time/ZoneOffset;)J", false);
+    }
+
+    private Jt component(BbkExpr arg, Type.Kind k, String getter) {
+        loadTemporal(arg, k);
+        mv.visitMethodInsn(INVOKEVIRTUAL, tName(k), getter, "()I", false);
+        mv.visitInsn(I2L);
+        return Jt.LONG;
+    }
+
+    private Jt addUnit(List<BbkExpr> args, Type.Kind k, String plus) {
+        loadTemporal(args.get(0), k);
+        coerce(expr(args.get(1)), Jt.LONG);
+        mv.visitMethodInsn(INVOKEVIRTUAL, tName(k), plus, "(J)L" + tName(k) + ";", false);
+        temporalToEpoch(k);
+        return Jt.LONG;
+    }
+
+    private Jt diff(List<BbkExpr> args, Type.Kind k, boolean days) {
+        coerce(expr(args.get(0)), Jt.LONG);
+        coerce(expr(args.get(1)), Jt.LONG);
+        mv.visitInsn(LSUB);
+        if (days && k == Type.Kind.TIMESTAMP) { mv.visitLdcInsn(86400L); mv.visitInsn(LDIV); }
+        return Jt.LONG;
+    }
+
+    private Jt dateToString(BbkExpr arg, Type.Kind k) {
+        loadTemporal(arg, k);
+        switch (k) {
+            case DATE -> mv.visitMethodInsn(INVOKEVIRTUAL, LD, "toString", "()Ljava/lang/String;", false);
+            case TIME -> { pushFormatter("HH:mm:ss"); mv.visitMethodInsn(INVOKEVIRTUAL, LT, "format", "(Ljava/time/format/DateTimeFormatter;)Ljava/lang/String;", false); }
+            case TIMESTAMP -> { pushFormatter("yyyy-MM-dd'T'HH:mm:ss"); mv.visitMethodInsn(INVOKEVIRTUAL, LDT, "format", "(Ljava/time/format/DateTimeFormatter;)Ljava/lang/String;", false); }
+            default -> throw unsupported("not a temporal type");
+        }
+        return Jt.STRING;
+    }
+
+    private void pushFormatter(String pattern) {
+        mv.visitLdcInsn(pattern);
+        mv.visitMethodInsn(INVOKESTATIC, DTF, "ofPattern", "(Ljava/lang/String;)Ljava/time/format/DateTimeFormatter;", false);
+    }
+
+    private static void requireDate(boolean ok, String fn) {
+        if (!ok) throw unsupported(fn + " needs a DATE or TIMESTAMP argument");
+    }
+
+    private static void requireTime(boolean ok, String fn) {
+        if (!ok) throw unsupported(fn + " needs a TIME or TIMESTAMP argument");
     }
 
     private Jt substr(List<BbkExpr> args) {
@@ -766,7 +1004,21 @@ public final class JvmCompiler {
     // -----------------------------------------------------------------------
 
     /** The lowered type of an expression — delegated to the shared {@link SemanticModel}. */
-    private Jt typeOf(BbkExpr e) { return jt(model.type(e)); }
+    private Jt typeOf(BbkExpr e) {
+        Type t = model.type(e);
+        if (t instanceof Type.Scalar || t instanceof Type.Array) return jt(t);
+        if (t == Type.VOID) throw unsupported(describeExpr(e) + " is a void call used as a value");
+        if (t instanceof Type.Ds) throw unsupported(describeExpr(e) + " is a whole data structure used as a scalar (use a subfield, e.g. ds.field)");
+        throw unsupported(describeExpr(e) + " is an unresolved name (not declared anywhere the compiler can see)");
+    }
+
+    /** Nombra una expresión para los mensajes de error. */
+    private static String describeExpr(BbkExpr e) {
+        if (e instanceof BbkExpr.Identifier id) return "the name '" + id.name() + "'";
+        if (e instanceof BbkExpr.Member m && m.target() instanceof BbkExpr.Identifier id) return "'" + id.name() + "." + m.field() + "'";
+        if (e instanceof BbkExpr.Call c && c.target() instanceof BbkExpr.Identifier id) return "the call '" + id.name() + "(...)'";
+        return "an expression";
+    }
 
     /** Map a shared semantic {@link Type} onto this back-end's {@link Jt}. */
     private static Jt jt(Type t) {
@@ -774,17 +1026,40 @@ public final class JvmCompiler {
             return switch (s.kind()) {
                 case INT -> Jt.LONG; case FLOAT -> Jt.DOUBLE; case DECIMAL -> Jt.DECIMAL;
                 case STRING -> Jt.STRING; case BOOL -> Jt.BOOL;
+                case DATE, TIME, TIMESTAMP -> Jt.LONG;     // epoch-day / segundos: representados como long
             };
         }
         if (t instanceof Type.Array a) return jt(a.element());
         if (t == Type.VOID) throw unsupported("void call used as a value");
-        throw unsupported("expression has no scalar type");
+        if (t instanceof Type.Ds) throw unsupported("a whole data structure used as a scalar value (use a subfield, e.g. ds.field)");
+        throw unsupported("an unresolved name or non-scalar value used in an expression");
     }
 
     private Sig toSig(ProcSignature sig) {
-        List<Jt> types = new ArrayList<>();
-        for (Type t : sig.paramTypes()) types.add(jt(t));
-        return new Sig(types, sig.paramArray(), sig.isVoid() ? null : jt(sig.returnType()));
+        List<Param> params = new ArrayList<>();
+        for (int i = 0; i < sig.paramTypes().size(); i++) {
+            Type t = sig.paramTypes().get(i);
+            if (t instanceof Type.Ds ds) {
+                if (ds.array()) throw unsupported("an array of data structures as a parameter");
+                List<DsField> fields = new ArrayList<>();
+                for (Type.Ds.Field f : ds.fields()) fields.add(new DsField(f.name(), jt(f.type()), scaleFromType(f.type())));
+                params.add(new DsParam(fields));
+            } else {
+                params.add(new ScalarParam(jt(t), sig.paramArray().get(i), scaleFromType(t)));
+            }
+        }
+        Jt ret = sig.isVoid() ? null : retJt(sig.returnType());
+        return new Sig(params, ret);
+    }
+
+    private static Jt retJt(Type t) {
+        if (t instanceof Type.Ds) throw unsupported("returning a data structure from a procedure (use a parameter instead)");
+        return jt(t);
+    }
+
+    /** The declared decimal scale of a semantic type (for DECIMAL), else -1. */
+    private static int scaleFromType(Type t) {
+        return t instanceof Type.Scalar s && s.kind() == Type.Kind.DECIMAL ? s.scale() : -1;
     }
 
     // -----------------------------------------------------------------------
@@ -1028,7 +1303,10 @@ public final class JvmCompiler {
 
     private String descriptor(Sig sig) {
         StringBuilder sb = new StringBuilder("(");
-        for (int i = 0; i < sig.paramTypes().size(); i++) sb.append(descOf(sig.paramTypes().get(i), sig.paramArray().get(i)));
+        for (Param p : sig.params()) {
+            if (p instanceof ScalarParam s) sb.append(descOf(s.jt(), s.array()));
+            else for (DsField f : ((DsParam) p).fields()) sb.append(descOf(f.jt(), false));   // DS aplanada a sus subcampos
+        }
         sb.append(')').append(sig.ret() == null ? "V" : descOf(sig.ret(), false));
         return sb.toString();
     }
@@ -1146,7 +1424,7 @@ public final class JvmCompiler {
                 case "PACKED", "ZONED", "BINDEC" -> Jt.DECIMAL;
                 case "BOOL", "IND" -> Jt.BOOL;
                 case "CHAR", "VARCHAR" -> Jt.STRING;
-                case "DATE", "TIME", "TIMESTAMP" -> throw new UnsupportedOperationException("date/time types need a date runtime (not lowered)");
+                case "DATE", "TIME", "TIMESTAMP" -> Jt.LONG;   // epoch-day / segundos: long
                 case "POINTER" -> throw new UnsupportedOperationException("pointers are not supported on the JVM back-end");
                 default -> throw new UnsupportedOperationException("type '" + p.name() + "' not supported by the bytecode back-end");
             };

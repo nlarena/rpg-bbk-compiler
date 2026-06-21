@@ -101,6 +101,26 @@ Runs BBK directly without compiling to native. Intended for fast iteration and d
 
 **Language:** Java or Kotlin.
 
+> **Note:** in the current code the tree-walking interpreter lives in `bbk-debugger/` and now backs
+> only the static **"Trace"** action. Interactive debugging moved to `bbk-jvm-debug/` (below).
+
+### `bbk-jvm-debug/` — debugger over the real bytecode (JDI/JDWP)
+
+UI-agnostic library that debugs the **real JVM bytecode** emitted by `bbk-core` — not a separate
+execution engine. Uses the standard Java debug mechanism (the same JDI/JDWP that Java, Kotlin and
+Scala use in IntelliJ):
+
+- Compiles BBK to `bbk/Main.class` on disk **with debug info** (LineNumberTable + `SourceFile` +
+  LocalVariableTable)
+- Forks a JVM with the JDWP agent (`suspend=y`) and attaches via JDI (`com.sun.jdi`, no `--add-modules`)
+- Maps JDI `Location` ↔ BBK line/file; installs breakpoints (with conditions), drives **native**
+  step over/into/out, reads frames + variables, evaluates expressions
+- Reads variables **lazily** (off the JDI event-loop thread, to avoid hanging the session)
+
+The plugin's XDebugger (`plugin-bbk`) orchestrates it; the engine is headless and unit-tested.
+
+**Depends on** `bbk-core` (+ `jdk.jdi` from the JDK). **Language:** Java.
+
 ### `bbk-compiler/` — BBK → C → native AOT compiler (production mode)
 
 Takes BBK and generates a native binary:
@@ -193,7 +213,9 @@ It is the last thing to receive branding but the first thing to exist as a runna
 ```
 boxbreaker-ide
     ├── plugin-bbk
-    │   └── bbk-core
+    │   ├── bbk-core
+    │   ├── bbk-jvm-debug   (→ bbk-core)   # interactive debugger (JDI)
+    │   └── bbk-debugger    (→ bbk-core)   # interpreter, only for "Trace"
     ├── plugin-rpg
     │   ├── rpg-frontend
     │   │   └── bbk-core

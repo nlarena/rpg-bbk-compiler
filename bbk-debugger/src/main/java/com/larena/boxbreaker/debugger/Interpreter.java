@@ -1,6 +1,7 @@
 package com.larena.boxbreaker.debugger;
 
 import com.larena.boxbreaker.core.ast.*;
+import com.larena.boxbreaker.core.parser.BbkParser;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -50,6 +51,15 @@ final class Interpreter {
     private final Map<String, BbkDeclaration.DataStructure> dsShapes = new LinkedHashMap<>();
     private int step = 0;
     private int depth = 0;
+
+    /** Modo evaluación (watch / condición): bloquea invocar procedimientos. */
+    private volatile boolean evaluating = false;
+
+    /** Evaluador ligado a este intérprete; usa el entorno vigente en cada llamada. */
+    private final Evaluator evaluator = new Evaluator() {
+        @Override public String evaluate(String expression) { return evalExpression(expression); }
+        @Override public boolean evaluateCondition(String expression) { return evalConditionExpression(expression); }
+    };
 
     Interpreter(DebugListener listener, Locations locations) {
         this.listener = listener;
@@ -327,6 +337,39 @@ final class Interpreter {
         return binary(eval(b.left()), b.op(), eval(b.right()));
     }
 
+    // ----- evaluación de expresiones (watches / condiciones de breakpoint) -----
+
+    String evalExpression(String expr) {
+        BbkExpr e = parseExpr(expr);
+        boolean prev = evaluating;
+        evaluating = true;
+        try {
+            return display(eval(e));
+        } finally {
+            evaluating = prev;
+        }
+    }
+
+    boolean evalConditionExpression(String expr) {
+        BbkExpr e = parseExpr(expr);
+        boolean prev = evaluating;
+        evaluating = true;
+        try {
+            return truthy(eval(e));
+        } finally {
+            evaluating = prev;
+        }
+    }
+
+    private static BbkExpr parseExpr(String expr) {
+        if (expr == null || expr.isBlank()) throw new DebugException("expresión vacía");
+        BbkProgram program = BbkParser.parse(expr + ";");
+        if (!program.items().isEmpty() && program.items().get(0) instanceof BbkStatement.ExpressionStatement es) {
+            return es.expr();
+        }
+        throw new DebugException("no es una expresión: " + expr);
+    }
+
     private Object evalCall(BbkExpr.Call c) {
         if (!(c.target() instanceof BbkExpr.Identifier id)) {
             throw new DebugException("sólo se soportan llamadas por nombre en el debugger v1");
@@ -338,6 +381,7 @@ final class Interpreter {
             return null;
         }
         if (procedures.containsKey(name)) {
+            if (evaluating) throw new DebugException("no se pueden invocar procedimientos al evaluar");
             java.util.List<Object> args = c.args().stream().map(this::eval).toList();
             return callProcedure(procedures.get(name), args);
         }
@@ -693,7 +737,7 @@ final class Interpreter {
         for (Map.Entry<String, Object> e : scope.entrySet()) snapshot.put(e.getKey(), display(e.getValue()));
 
         TraceStep ts = new TraceStep(++step, file, line, depth, statement, snapshot, outputDelta);
-        if (listener.onStep(ts) == DebugListener.Decision.STOP) throw new Stopped();
+        if (listener.onStep(ts, evaluator) == DebugListener.Decision.STOP) throw new Stopped();
     }
 
     private static String display(Object o) {

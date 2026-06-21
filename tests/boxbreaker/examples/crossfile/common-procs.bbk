@@ -21,13 +21,9 @@ DCL-PROC validateCustomer(cust LIKEDS(customer) CONST) -> BOOL EXPORT {
 }
 
 DCL-PROC processOrder(ord LIKEDS(order) CONST) -> BOOL EXPORT {
-  DCL-S taxAmount PACKED(11:2);
-
   if (ord.total <= 0) {
     return false;
   }
-  taxAmount = computeTax(ord.total);
-  sendNotification(ord.customerId, "Order " + char(ord.orderId) + " processed");
   return true;
 }
 

@@ -97,7 +97,7 @@ escalares**, más arrays y estructuras. Cada backend mapea esto a su representac
 | `PACKED(p:s)`, `ZONED(p:s)`, `BINDEC(p:s)` | `DECIMAL` (escala `s`) | `BigDecimal` | `long double` |
 | `CHAR(n)`, `VARCHAR(n)` | `STRING` | `String` | `const char*` |
 | `BOOL`, `IND` | `BOOL` | `boolean` | `int` |
-| `DATE`, `TIME`, `TIMESTAMP` | — | **no lowered** (diagnóstico) | **no lowered** |
+| `DATE`, `TIME`, `TIMESTAMP` | `DATE`/`TIME`/`TIMESTAMP` | `long` (epoch) | `long long` (epoch) |
 | `POINTER` | — | **no lowered** | **no lowered** |
 
 ### 3.1 Torre numérica y coerción
@@ -139,6 +139,26 @@ person.firstName = "Nicolas";        // acceso calificado con .
 - `LIKEDS(x)` — clona el layout de otra DS/template.
 - `DIM(n)` sobre la DS → **array de estructuras**: `emp[0].id`.
 - `OVERLAY` (aliasing de memoria) **no** está soportado por los backends.
+
+### 3.4 Fechas y horas
+
+`DATE`, `TIME` y `TIMESTAMP` son tipos de primera clase. Internamente se bajan a un **entero
+epoch** (día-epoch / segundos del día / segundos-epoch), así la comparación y la diferencia son
+aritmética nativa. La construcción, el formateo y la aritmética de calendario van por funciones
+(§6.6): **JVM** usa `java.time` por debajo; **C** un prelude de calendario civil que da los
+**mismos resultados** (ISO-8601, años bisiestos, recorte de día). Sin `INZ`, el valor por
+defecto es `1970-01-01` / `00:00:00`.
+
+```
+DCL-S d DATE;
+d = date("2024-01-31");
+d = addmonths(d, 1);          // 2024-02-29 (recorta + bisiesto)
+print(char(d));               // "2024-02-29"
+if (d < today()) { ... }      // comparación entre el mismo tipo
+```
+
+Comparar o mezclar fechas con números crudos es error: la aritmética de fechas va por las
+funciones de §6.6.
 
 ## 4. Declaraciones
 
@@ -184,6 +204,9 @@ DCL-PROC sum(a INT(10) VALUE, b INT(10) VALUE) -> INT(10) EXPORT {
 - `-> TIPO` declara el tipo de retorno; sin él, el procedimiento es `void`.
 - Los backends bajan cada `DCL-PROC` a un método/función estática; las llamadas son
   `INVOKESTATIC` (JVM) / llamada a función (C). **Parámetros por valor.**
+- Un parámetro puede ser una **estructura de datos** (`LIKEDS(t)`). Se pasa **por valor**,
+  bajada a sus subcampos escalares (JVM: parámetros `c.id`, `c.name`; C: `c_id`, `c_name`); el
+  que llama empuja los subcampos del DS argumento. *Retornar* una DS aún no está soportado.
 - `EXTPGM(...)` / `EXTPROC(...)` designan programas/procedimientos externos del IBM i:
   son **llamadas al SO**, no lowered por los backends.
 
@@ -334,7 +357,7 @@ Implementados por ambos backends (no son llamadas al SO):
 | `trim(s)` / `triml(s)` / `trimr(s)` | `STRING` | recorta ambos / izquierda / derecha |
 | `lower(s)` / `upper(s)` | `STRING` | caja |
 | `replace(s, from, to)` | `STRING` | reemplazo de subcadena |
-| `char(x)` | `STRING` | número/bool → texto |
+| `char(x)` | `STRING` | número/bool/fecha → texto (las fechas en ISO) |
 | `int(x)` | `INT` | string/double/decimal → entero |
 | `float(x)` | `FLOAT` | a punto flotante |
 | `dec(x)` | `DECIMAL` | a decimal |
@@ -353,6 +376,24 @@ Implementados por ambos backends (no son llamadas al SO):
 
 Otros (`*inlr`, `*hival`, ...) no están soportados.
 
+### 6.6 Funciones de fecha/hora
+
+Builtins puros (no son llamadas al SO). **JVM** las baja con `java.time`; **C** con un prelude de
+calendario civil — **mismos resultados**, verificado en paridad. Restar = `n` negativo.
+
+| Función | Resultado | Notas |
+|---|---|---|
+| `date(s)` / `time(s)` / `timestamp(s)` | `DATE` / `TIME` / `TIMESTAMP` | parsea ISO (`"2024-01-15"`, `"13:45:30"`, `"2024-01-15T13:45:30"`) |
+| `today()` / `now()` | `DATE` / `TIMESTAMP` | fecha / fecha-hora actual |
+| `year(d)` / `month(d)` / `day(d)` | `INT` | componentes de `DATE`/`TIMESTAMP` |
+| `hour(t)` / `minute(t)` / `second(t)` | `INT` | componentes de `TIME`/`TIMESTAMP` |
+| `adddays` / `addmonths` / `addyears(d, n)` | igual que `d` | sobre `DATE`/`TIMESTAMP`; `addmonths`/`addyears` recortan el día (31-ene +1 mes = 28/29-feb) |
+| `addhours` / `addminutes` / `addseconds(t, n)` | igual que `t` | sobre `TIME`/`TIMESTAMP` (`TIME` envuelve dentro del día) |
+| `diffdays(a, b)` / `diffseconds(a, b)` | `INT` | diferencia entre dos valores del mismo tipo |
+
+La comparación (`< > == …`) es entre dos valores del **mismo** tipo de fecha; `char(d)` los
+formatea en ISO. Mezclar tipos o sumar una fecha con un número crudo es error de tipos.
+
 ## 7. Análisis semántico
 
 `semantic.SemanticAnalyzer` recorre el programa una vez y produce un `SemanticModel`: el **tipo
@@ -369,14 +410,16 @@ desconocido, operación de archivo (OS).
 **Cubierto por ambos backends (lenguaje no-SO completo):** escalares (incl. decimales exactos),
 todos los operadores (incl. `**` y `+` concatenación), `if`/`select`/`while`/`do-while`/`for`,
 `break`/`continue`/`return`, `monitor`, constantes, valores especiales, arrays (incl. de DS),
-estructuras (`QUALIFIED`/`TEMPLATE`/`LIKEDS`), procedimientos + `CTL-OPT MAIN`, subrutinas
-(`BEGSR`/`EXSR`/`LEAVESR`) y los builtins puros.
+estructuras (`QUALIFIED`/`TEMPLATE`/`LIKEDS`), procedimientos + `CTL-OPT MAIN` (incluyendo
+**parámetros DS por valor**), subrutinas (`BEGSR`/`EXSR`/`LEAVESR`), los builtins puros y los
+**tipos y funciones de fecha/hora** (`DATE`/`TIME`/`TIMESTAMP`).
 
 **No lowered (diagnóstico / a `bbk-runtime`):**
 
 - **SO IBM i:** `DCL-F` y operaciones de archivo, `EXTPGM`/`EXTPROC` (programas externos).
 - **`OVERLAY`** (aliasing de memoria de subcampos).
-- **Tipos fecha/hora** (`DATE`/`TIME`/`TIMESTAMP`) y **`POINTER`**.
+- **`POINTER`**.
+- Retornar una **DS** desde un procedimiento (los parámetros DS sí; el retorno aún no).
 
 ## 9. Gramática (resumen EBNF)
 

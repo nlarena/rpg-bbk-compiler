@@ -15,7 +15,7 @@ import java.util.List;
  */
 public sealed interface Type permits Type.Scalar, Type.Array, Type.Ds, Type.Special {
 
-    enum Kind { INT, FLOAT, DECIMAL, STRING, BOOL }
+    enum Kind { INT, FLOAT, DECIMAL, STRING, BOOL, DATE, TIME, TIMESTAMP }
 
     /** A scalar value; {@code scale} is the decimal scale for {@code DECIMAL}, else -1. */
     record Scalar(Kind kind, int scale) implements Type {}
@@ -46,6 +46,9 @@ public sealed interface Type permits Type.Scalar, Type.Array, Type.Ds, Type.Spec
     Type FLOAT = new Scalar(Kind.FLOAT, -1);
     Type STRING = new Scalar(Kind.STRING, -1);
     Type BOOL = new Scalar(Kind.BOOL, -1);
+    Type DATE = new Scalar(Kind.DATE, -1);
+    Type TIME = new Scalar(Kind.TIME, -1);
+    Type TIMESTAMP = new Scalar(Kind.TIMESTAMP, -1);
     Type UNKNOWN = new Special(SpecialKind.UNKNOWN);
     Type VOID = new Special(SpecialKind.VOID);
 

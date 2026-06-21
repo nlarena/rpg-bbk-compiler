@@ -137,4 +137,60 @@ public class CBackendOpsTest {
         assertEquals("599.85", CRunner.compileAndRun(
             "DCL-S p PACKED(9:2) INZ(199.95d);\nDCL-S q INT(10) INZ(3);\nDCL-S s PACKED(11:2);\ns = p * q;\nprint(s);").strip());
     }
+
+    // ---- data-structure parameters (by value) -----------------------------
+
+    @Test
+    public void dataStructureParamFlattensToSubfields() {
+        String out = c(
+            "DCL-DS point TEMPLATE QUALIFIED { x INT(10); y INT(10); }\n" +
+            "DCL-PROC sumPoint(p LIKEDS(point)) -> INT(10) { return p.x + p.y; }\n" +
+            "DCL-DS a LIKEDS(point);\n" +
+            "a.x = 3; a.y = 4;\n" +
+            "print(char(sumPoint(a)));");
+        assertTrue(out.contains("static long long sumPoint(long long p_x, long long p_y) {"));   // DS param -> 2 escalares
+        assertTrue(out.contains("return p_x + p_y;"));                                            // miembros -> p_x/p_y
+        assertTrue(out.contains("sumPoint(a_x, a_y)"));                                           // DS argumento -> sus subcampos
+    }
+
+    @Test
+    public void dataStructureParamRunsWhenGcc() throws Exception {
+        if (!CRunner.hasCompiler()) return;
+        assertEquals("7", CRunner.compileAndRun(
+            "DCL-DS point TEMPLATE QUALIFIED { x INT(10); y INT(10); }\n" +
+            "DCL-PROC sumPoint(p LIKEDS(point)) -> INT(10) { return p.x + p.y; }\n" +
+            "DCL-DS a LIKEDS(point);\n" +
+            "a.x = 3; a.y = 4;\n" +
+            "print(sumPoint(a));").strip());
+    }
+
+    // ---- date runtime (paridad con el backend JVM) ------------------------
+
+    @Test
+    public void dateRuntimeEmitsCalendarHelpers() {
+        String out = c("print(char(addmonths(date(\"2024-01-31\"), 1)));");
+        assertTrue(out.contains("bbk_date_parse("));
+        assertTrue(out.contains("bbk_date_addmonths("));
+        assertTrue(out.contains("bbk_date_str("));
+    }
+
+    @Test
+    public void dateRuntimeRunsWhenGcc() throws Exception {
+        if (!CRunner.hasCompiler()) return;
+        assertEquals("2024-01-15", CRunner.compileAndRun("print(char(date(\"2024-01-15\")));").strip());
+        assertEquals("2024-01-15", CRunner.compileAndRun("print(date(\"2024-01-15\"));").strip());
+        assertEquals("2024-02-04", CRunner.compileAndRun("print(char(adddays(date(\"2024-01-15\"), 20)));").strip());
+        assertEquals("2024-02-29", CRunner.compileAndRun("print(char(addmonths(date(\"2024-01-31\"), 1)));").strip());
+        assertEquals("2026-01-15", CRunner.compileAndRun("print(char(addyears(date(\"2024-01-15\"), 2)));").strip());
+        assertEquals("2024", CRunner.compileAndRun("print(char(year(date(\"2024-01-15\"))));").strip());
+        assertEquals("15", CRunner.compileAndRun("print(char(day(date(\"2024-01-15\"))));").strip());
+        assertEquals("31", CRunner.compileAndRun("print(char(diffdays(date(\"2024-02-01\"), date(\"2024-01-01\"))));").strip());
+        assertEquals("14:05:30", CRunner.compileAndRun("print(char(addminutes(time(\"13:45:30\"), 20)));").strip());
+        assertEquals("16", CRunner.compileAndRun("print(char(hour(addhours(time(\"13:00:00\"), 3))));").strip());
+        assertEquals("2024-01-16T14:45:30", CRunner.compileAndRun("print(char(addhours(timestamp(\"2024-01-15T13:45:30\"), 25)));").strip());
+        assertEquals("before", CRunner.compileAndRun(
+            "if (date(\"2024-01-15\") < date(\"2024-02-01\")) { print(\"before\"); } else { print(\"after\"); }").strip());
+        assertEquals("2024-03-10", CRunner.compileAndRun(
+            "DCL-DS r QUALIFIED { d DATE; }\nr.d = date(\"2024-03-10\");\nprint(char(r.d));").strip());
+    }
 }

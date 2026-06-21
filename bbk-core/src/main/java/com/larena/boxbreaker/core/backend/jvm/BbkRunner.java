@@ -1,7 +1,7 @@
 package com.larena.boxbreaker.core.backend.jvm;
 
-import com.larena.boxbreaker.core.ast.BbkProgram;
 import com.larena.boxbreaker.core.parser.BbkParser;
+import com.larena.boxbreaker.core.parser.ParsedProgram;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -21,10 +21,10 @@ public final class BbkRunner {
         Class<?> define(String name, byte[] bytes) { return defineClass(name, bytes, 0, bytes.length); }
     }
 
-    /** Compile BBK source, run {@code bbk.Main.main}, and return everything it printed. */
+    /** Compile BBK source (with debug info), run {@code bbk.Main.main}, and return everything it printed. */
     public static String compileAndRun(String bbkSource) {
-        BbkProgram program = BbkParser.parse(bbkSource);
-        return run(JvmCompiler.compile(program));
+        ParsedProgram parsed = BbkParser.parseWithPositions(bbkSource);
+        return run(JvmCompiler.compile(parsed.program(), parsed.positions()));
     }
 
     /** Run already-compiled bytecode and capture its stdout. */

@@ -42,7 +42,7 @@ public final class TraceBbkAction extends AnAction {
         String name = file != null ? file.getName() : "BBK";
 
         int[] count = {0};
-        DebugResult result = BbkDebugger.run(source, step ->
+        DebugResult result = BbkDebugger.run(source, (step, evaluator) ->
             count[0]++ < STEP_CAP ? DebugListener.Decision.CONTINUE : DebugListener.Decision.STOP);
 
         new BbkOutputDialog(e.getProject(), "Trace BBK — " + name, render(result)).show();
